@@ -18,7 +18,7 @@ for their panel:
 	7. Linked from 1900-1910-1920
 	
 covariates they used:
-	8. 
+	8. yuh
 
 */
 
