@@ -1,0 +1,148 @@
+-------------------------------------------------------------------------------
+       log:  C:\Users\ranabr\Documents\My Dropbox\Boustan-Abramitzky\Additions_
+> dataarchive\plot_graphs.log
+  log type:  text
+ opened on:  15 Aug 2013, 20:07:09
+
+. 
+. global NATIVES_2NDGEN_SAMPLES "IPUMS_2nd_gen_natives"
+
+. global IMMIG_PANEL "panel_all_01_var_subset"
+
+. 
+. // The following variables will be used in the regression.
+. // MAKE SURE that if you change the varlists, CHANGE THE addFakeObs PROGRAM i
+> n addFakeObs.ado
+. // that creates the fake ("representative") observations TO CALCULATE ALL THE
+>  VARIABLES THAT YOU ASK FOR IN THE REGRESSION
+. global ageProfVars       "age age35 ageXage35"    // enter the variables acti
+> ng as age profile (e.g age age2 age3)
+
+. // global ageProfVars    "age age2 age3 age4"    // enter the variables actin
+> g as age profile (e.g age age2 age3)
+. 
+. global yrsUSProfVars "Iyrsusa2_*"                        // enter the variabl
+> es acting as years-in-US profile (e.g _YUSyrsusa2_*)
+
+. global controls          ""                                             // en
+> ter additional controls ("marital" appeared in Ran's do-file, but is absent f
+> rom Leah & Katherine's)
+
+. 
+. // y-axis range, if you want it fixed (if not, make sure global is empty
+. global yLabelRange "18(2)30"
+
+. global xLabelRange   "20(10)55"
+
+. 
+. global outcomes      "occscore_all"     // enter 
+
+. 
+. global COUNTRIES         "400 401 404 405 410 411 412 414 420 421 426 434 436
+>  450 453 465"
+
+. // global COUNTRIES      "404 410"
+. global countryPrefix "Tbpl1_"
+
+. 
+. global firstGen_years_min  = 1900
+
+. global firstGen_years_max  = 1920
+
+. global secondGen_years_min = 1920
+
+. global secondGen_years_max = 1950
+
+. 
+. foreach gen in first second {
+  2.         global `gen'Gen_years_cond "inrange(year, ${`gen'Gen_years_min}, $
+> {`gen'Gen_years_max})"
+  3. }
+
+. 
+. global firstGenSample   "(sample == 1)"
+
+. global secondGenSample  "(sample == 2)"
+
+. global nativesSample    "(sample == 5)"
+
+. 
+. global group_firstGen_id                        = 1
+
+. global group_firstGen_lab                       "Immigrants, ${firstGen_years
+> _min}-${firstGen_years_max}"
+
+. global group_secondGen_id                       = 2
+
+. global group_secondGen_lab                      "Sons of immigrants, ${second
+> Gen_years_min}-${secondGen_years_max}"
+
+. global group_firstGens_natives_id       = 3
+
+. global group_firstGens_natives_lab      "Sons of US born parents, ${firstGen_
+> years_min}-${firstGen_years_max}"
+
+. global group_secondGens_natives_id      = 4
+
+. global group_secondGens_natives_lab     "Sons of US born parents, ${secondGen
+> _years_min}-${secondGen_years_max}"
+
+. 
+. foreach group in firstGen secondGen firstGens_natives secondGens_natives {
+  2.         label define groups ${group_`group'_id} "${group_`group'_lab}", ad
+> d
+  3. }
+
+. 
+. // These are used to cut the sample
+. global urban_cond = "(urban == 1)"
+
+. global rural_cond = "(urban == 0)"
+
+. global all_cond   = "inlist(urban, 0, 1)"
+
+. 
+. // These are used to read the results of the appropriate regression
+. global urban_flag = 1
+
+. global rural_flag = 0
+
+. global all_flag   = 9
+
+. 
+. global urban_urb_control ""
+
+. global rural_urb_control ""
+
+. global all_urb_control   ""
+
+. 
+. global urbanCutoffForPanel = .4
+
+. 
+. global fakeObsSample = 99
+
+. 
+. global fakeObsAgeIn1stYear      = 25
+
+. global fakeObsImmigYear         = 1890
+
+. 
+. global sampleMinAge = 20
+
+. global sampleMaxAge = 60
+
+. 
+. /***************************************************
+>  * Load datasets and append one to the other
+>  ***************************************************/
+. use                     ${IMMIG_PANEL} 
+file panel_all_01_var_subset.dta not found
+r(601);
+
+end of do-file
+
+r(601);
+
+
+. exit, clear
