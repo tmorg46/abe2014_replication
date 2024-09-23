@@ -1,6 +1,6 @@
 # Exclude the raw data :) #
 ###########################
-*/raw_data/*
+our_stuff/raw_data/
 
 
 # Compiled source #
