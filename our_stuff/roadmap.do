@@ -12,7 +12,7 @@ steps for their sample:
 	3. Between 18-35 in 1900
 	4. Immigrants arrived 1880-1900
 	5. White
-	6. Not in the South
+	6. Not in the South (they drop DE, DC, FL, GA, MD, NC, SC, VA, WV, AL, KY, MS, TN, AR, LA, OK, TX)
 	
 for their panel:
 	7. Linked from 1900-1910-1920
