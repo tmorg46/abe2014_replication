@@ -1,6 +1,7 @@
 # Exclude the raw data :) #
 ###########################
 our_stuff/raw_data/
+our_stuff/intermediate_datasets/
 
 
 # Compiled source #
