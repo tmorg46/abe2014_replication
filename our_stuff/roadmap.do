@@ -43,14 +43,14 @@ bpl codes for countries
 		Switzerland - 426
 		Wales - 412
 		
-	Potential European Adds
+	Potential European Adds (footnote 46)
 		Netherlands - 425
 		Czechoslovakia - 452
 		Hungary - 454
 		Poland - 455
 		Romania - 456
 		
-	Potential NA Adds
+	Potential NA Adds (???)
 		Canada - 150
 		
 	Can't do China, Japan, Mexico because of naturalization differences (a.k.a. they couldn't, but the hwahts could)

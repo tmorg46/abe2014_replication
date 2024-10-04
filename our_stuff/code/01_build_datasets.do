@@ -53,5 +53,7 @@ foreach year in 1900 1910 1920 {
 
 save "${route}/intermediate_datasets/replicated_pcs.dta", replace // the replicated pooled cross-section is now saved and ready to go!		
 										
-
+					
+										
+										
 										
