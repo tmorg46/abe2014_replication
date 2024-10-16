@@ -133,11 +133,40 @@ reshape long histid, i(id) j(year)
 
 foreach year in 1900 1910 1920 {
 	
+	// the update and keep(1 3 4) options allow us to "fill in the gaps" as we merge each year onto the list of histids
 	merge m:1 histid using "${route}/raw_data/ipums_sets/ipums_baseline_`year'.dta", keep(1 3 4) update nogen
 	
 }
 
 drop serial pernum sample hhwt gq perwt versionhist raced bpld // extra variables we don't need that came by default with each sample can go!
 
+save "${route}/intermediate_datasets/canada_links.dta", replace // and save them!
+
+
+*************************************
+*and now we link the ladies!!!!!!!!!:
+use histid year if year==1900 using "${route}/intermediate_datasets/women_pcs.dta", clear // start with the 1900 folks from the narrowed-down sample (so we don't have to narrow it down again)
+drop year
+
+rename histid histid1900
+
+merge m:1 histid1900 using `ct_1900_1910', keep(3) nogen
+merge m:1 histid1900 using `ct_1900_1920', keep(3) nogen // and now we've got them linked to their future selves!!
+
+sort histid1900
+gen id = _n
+reshape long histid, i(id) j(year) 
+
+foreach year in 1900 1910 1920 {
+	
+	// the update and keep(1 3 4) options allow us to "fill in the gaps" as we merge each year onto the list of histids
+	merge m:1 histid using "${route}/raw_data/ipums_sets/ipums_baseline_`year'.dta", keep(1 3 4) update nogen
+	
+}
+
+drop serial pernum sample hhwt gq perwt versionhist raced bpld // extra variables we don't need that came by default with each sample can go!
+
+save "${route}/intermediate_datasets/women_links.dta", replace // and save them!
+*/
 										
 										
