@@ -116,7 +116,7 @@ foreach year in 1910 1920 {
 	drop clp mlp xgb family_tree direct_hint profile_hint implied methods // don't need all the extra variables once we've cleaned the links up like we did above, so yeet!
 	
 	tempfile ct_1900_`year'
-	save `ct_1900_`year'', replace // we'll tempfile them to not save space (because they're .csv files so we can't merge them straight-up)
+	save `ct_1900_`year'', replace // we'll tempfile them to save space (because they're .csv files so we can't merge them straight-up)
 }
 
 *************************************
