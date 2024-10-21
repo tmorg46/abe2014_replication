@@ -27,19 +27,20 @@ foreach year in 1900 1910 1920 {
 	drop serial pernum sample hhwt gq perwt versionhist raced bpld // extra variables we don't need that came by default with each sample can go!
 
 	*we'll filter the cross-section as they do:
-	keep if 	sex==1 						// men
-	keep if		inrange(birthyr,1865,1882)	// aged 18-35 in 1900
-	keep if 	race==1						// who are white,
+	keep if 	sex==1 							// men
+	keep if		inrange(birthyr,1865,1882)		// aged 18-35 in 1900
+	keep if 	race==1							// who are white,
 
 	keep if		!inlist(stateicp,   	///
 				11,40,41,42,43,44,  	///
 				45,46,47,48,49,51,  	///
-				52,53,54,56,98)				// aren't "in the South",
+				52,53,54,56,98)					// aren't "in the South",
 				
-	keep if		bpl<99 | bpl==150			// are native to the US or Canada,
+	keep if		bpl<99 | bpl==150				// are native to the US or Canada,
 				
-	keep if		inrange(yrimmig,1880,1900)	// and came to the US between
-											// 1880-1900 if they're non-native.
+	keep if		inrange(yrimmig,1880,1900) | ///
+					yrimmig==0					// and came to the US between
+												// 1880-1900 if they're non-native.
 	
 	tempfile cross`year'_canada
 	save `cross`year'_canada', replace // now we have the cross-section for a given year stored in memory temporarily:
@@ -81,8 +82,9 @@ foreach year in 1900 1910 1920 {
 				bpl==436 | bpl==450 |	/// // are native to the U.S.
 				bpl==453 | bpl==465			// or the 16 sending countries,
 				
-	keep if		inrange(yrimmig,1880,1900)	// and came to the U.S. between
-											// 1880-1900 if they're non-native.
+	keep if		inrange(yrimmig,1880,1900) | ///
+					yrimmig==0					// and came to the US between
+												// 1880-1900 if they're non-native.
 	
 	tempfile cross`year'_women
 	save `cross`year'_women', replace // now we have the cross-section for a given year stored in memory temporarily:
