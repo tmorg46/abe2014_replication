@@ -51,6 +51,12 @@ foreach year in 1900 1910 1920 {
 	append using `cross`year'_canada' // so we can put them all together!
 }
 
+*we want to mark each birthplace with its proper name for tables later:
+decode bpl, gen(bpl_name)
+
+replace bpl_name = proper(bpl_name)
+replace bpl_name = "USA" if bpl<99
+
 save "${route}/intermediate_datasets/canada_pcs.dta", replace // the replicated pooled cross-section is now saved and ready to go!	
 */
 
@@ -95,6 +101,14 @@ foreach year in 1900 1910 1920 {
 	append using `cross`year'_women' // so we can put them all together!
 }
 
+*we want to mark each birthplace with its proper name for tables later:
+decode bpl, gen(bpl_name)
+
+replace bpl_name = proper(bpl_name)
+replace bpl_name = "USA" 	if bpl<99
+replace bpl_name = "Russia" if bpl==465
+
+
 save "${route}/intermediate_datasets/women_pcs.dta", replace // the replicated pooled cross-section is now saved and ready to go!	
 */
 
@@ -115,8 +129,7 @@ foreach year in 1910 1920 {
 								
 	drop clp mlp xgb family_tree direct_hint profile_hint implied methods // don't need all the extra variables once we've cleaned the links up like we did above, so yeet!
 	
-	tempfile ct_1900_`year'
-	save `ct_1900_`year'', replace // we'll tempfile them to save space (because they're .csv files so we can't merge them straight-up)
+	save "${route}/intermediate_datasets/ct_1900_`year'.dta", replace // now it's a mergeable file! I would tempfile this normally, but if I don't you can run this build on just 16gb ram, so I won't here!
 }
 
 *************************************
@@ -126,8 +139,8 @@ drop year
 
 rename histid histid1900
 
-merge m:1 histid1900 using `ct_1900_1910', keep(3) nogen
-merge m:1 histid1900 using `ct_1900_1920', keep(3) nogen // and now we've got them linked to their future selves!!
+merge m:1 histid1900 using "${route}/intermediate_datasets/ct_1900_1910.dta", keep(3) nogen
+merge m:1 histid1900 using "${route}/intermediate_datasets/ct_1900_1920.dta", keep(3) nogen // and now we've got them linked to their future selves!!
 
 sort histid1900
 gen id = _n
@@ -152,8 +165,8 @@ drop year
 
 rename histid histid1900
 
-merge m:1 histid1900 using `ct_1900_1910', keep(3) nogen
-merge m:1 histid1900 using `ct_1900_1920', keep(3) nogen // and now we've got them linked to their future selves!!
+merge m:1 histid1900 using "${route}/intermediate_datasets/ct_1900_1910.dta", keep(3) nogen
+merge m:1 histid1900 using "${route}/intermediate_datasets/ct_1900_1920.dta", keep(3) nogen // and now we've got them linked to their future selves!!
 
 sort histid1900
 gen id = _n

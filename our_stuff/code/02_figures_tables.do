@@ -16,30 +16,42 @@ global route "/Users/tmorg46/Desktop/abe2014_replication/our_stuff"
 * Replicate their Table 1 - Sample Sizes & Match Rates
 ******************************************************
 // pending
-* we need to reopen the big census sample of non-Southern white people 18-35 to get 1900 baseline number-in-universe measures
-use if ///
-	inrange(birthyr,1865,1882) & ///
-	race==1 				   & ///
-	!inlist(stateicp,   		 ///
-		11,40,41,42,43,44,  	 ///
-		45,46,47,48,49,51,  	 ///
-		52,53,54,56,98)		   & ///
-	(inrange(yrimmig,1880,1900)  ///
-		| yrimmig==0)			 ///
-	using "${route}/raw_data/ipums_sets/ipums_baseline_1900.dta", clear
-	
-*let's get the American men & women first:
-foreach sex in 1 2 {
-	
-	sum if sex==`sex' & ///
-		bpl<99
+*we need to get 1900 baseline number-in-universe counts, so we'll loop through our pooled-cs and panel specifications:
+foreach spec in pcs links {
 		
-	local american`sex' = r(N)
+	*open the canadian version first:
+	use if year==1900 using "${route}/intermediate_datasets/canada_`spec'.dta", clear
+		
+	*loop through the two birthplaces
+	foreach bpl_name in USA Canada {
+		
+		qui sum year if bpl_name=="`bpl_name'"
+		local `spec'_`bpl_name'_men = r(N) // this stores the count in a local!
+		
+	}
+
+	*now let's go get the ladies:
+	use if year==1900 using "${route}/intermediate_datasets/women_`spec'.dta", clear
+
+	*and now loop through all the countries:
+	levelsof bpl_name, local(bpl_names) // get them all into a list in a local
+
+	foreach bpl_name of local bpl_names { // and loop through that local!
+		
+		qui sum year if bpl_name=="`bpl_name'"
+		local `spec'_`bpl_name'_women = r(N)
+		
+	}
 }
 
-*now the Canadian men:
-sum if sex==1 & bpl==150
+
 	
+
+
+
+
+
+
 
 
 
