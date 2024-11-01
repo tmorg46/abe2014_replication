@@ -85,8 +85,10 @@ foreach year in 1900 1910 1920 {
 				bpl==411 | bpl==412 |	///
 				bpl==414 | bpl==420 |   ///
 				bpl==421 | bpl==426 |   ///
-				bpl==436 | bpl==450 |	/// // are native to the U.S.
-				bpl==453 | bpl==465			// or the 16 sending countries,
+				bpl==434 | bpl==436 | 	///
+				bpl==450 | bpl==453 |	/// 
+				bpl==465					// are native to the U.S.
+											// or the 16 sending countries,
 				
 	keep if		inrange(yrimmig,1880,1900) | ///
 					yrimmig==0					// and came to the US between
@@ -155,6 +157,12 @@ foreach year in 1900 1910 1920 {
 
 drop serial pernum sample hhwt gq perwt versionhist raced bpld // extra variables we don't need that came by default with each sample can go!
 
+*we want to mark each birthplace with its proper name for tables later:
+decode bpl, gen(bpl_name)
+
+replace bpl_name = proper(bpl_name)
+replace bpl_name = "USA" 	if bpl<99
+
 save "${route}/intermediate_datasets/canada_links.dta", replace // and save them!
 
 
@@ -180,6 +188,13 @@ foreach year in 1900 1910 1920 {
 }
 
 drop serial pernum sample hhwt gq perwt versionhist raced bpld // extra variables we don't need that came by default with each sample can go!
+
+*we want to mark each birthplace with its proper name for tables later:
+decode bpl, gen(bpl_name)
+
+replace bpl_name = proper(bpl_name)
+replace bpl_name = "USA" 	if bpl<99
+replace bpl_name = "Russia" if bpl==465
 
 save "${route}/intermediate_datasets/women_links.dta", replace // and save them!
 */
