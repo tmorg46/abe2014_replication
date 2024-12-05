@@ -57,6 +57,17 @@ decode bpl, gen(bpl_name)
 replace bpl_name = proper(bpl_name)
 replace bpl_name = "USA" if bpl<99
 
+// we also need to build some extra variables and adjust others:
+*add in the age quartic
+gen age  = year - birthyr
+gen age2 = age * age
+gen age3 = age * age2
+gen age4 = age * age3
+
+*make some adjusted occscore measures for relevant years
+gen occscore2010 = occscore * 900  // this is the (approximate) adjustment to 2010 dollars they made in their analysis
+gen occscore2024 = occscore * 1300 // this is an approximate adjustment to 2024 dollars
+
 save "${route}/intermediate_datasets/canada_pcs.dta", replace // the replicated pooled cross-section is now saved and ready to go!	
 */
 
@@ -110,6 +121,17 @@ replace bpl_name = proper(bpl_name)
 replace bpl_name = "USA" 	if bpl<99
 replace bpl_name = "Russia" if bpl==465
 
+// we also need to build some extra variables and adjust others:
+*add in the age quartic
+gen age  = year - birthyr
+gen age2 = age * age
+gen age3 = age * age2
+gen age4 = age * age3
+
+*make some adjusted occscore measures for relevant years
+gen occscore2010 = occscore * 900  // this is the (approximate) adjustment to 2010 dollars they made in their analysis
+gen occscore2024 = occscore * 1300 // this is an approximate adjustment to 2024 dollars
+
 
 save "${route}/intermediate_datasets/women_pcs.dta", replace // the replicated pooled cross-section is now saved and ready to go!	
 */
@@ -145,8 +167,8 @@ merge m:1 histid1900 using "${route}/intermediate_datasets/ct_1900_1910.dta", ke
 merge m:1 histid1900 using "${route}/intermediate_datasets/ct_1900_1920.dta", keep(3) nogen // and now we've got them linked to their future selves!!
 
 sort histid1900
-gen id = _n
-reshape long histid, i(id) j(year) 
+gen panel_id = _n
+reshape long histid, i(panel_id) j(year) 
 
 foreach year in 1900 1910 1920 {
 	
@@ -163,6 +185,27 @@ decode bpl, gen(bpl_name)
 replace bpl_name = proper(bpl_name)
 replace bpl_name = "USA" 	if bpl<99
 
+// we also need to build some extra variables and adjust others:
+*add in the age quartic
+gen age  = year - birthyr
+gen age2 = age * age
+gen age3 = age * age2
+gen age4 = age * age3
+
+*make some adjusted occscore measures for relevant years
+gen occscore2010 = occscore * 900  // this is the (approximate) adjustment to 2010 dollars they made in their analysis
+gen occscore2024 = occscore * 1300 // this is an approximate adjustment to 2024 dollars
+
+*we want to only keep panel links that are consistent on birthplace
+gen link_bpl = bpl if year==1900 	// check the base link year's bpl
+sort panel_id year					// put the base year's bpl on top of the link set
+replace link_bpl = link_bpl[_n-1] if link_bpl==. // fill out the link set
+
+gen bpl_oops = bpl!=link_bpl		// find the disagreements on bpl
+bysort panel_id: egen bad_bpls = max(bpl_oops)	 // mark the link sets with a bad bpl
+drop if bad_bpls!=0					// drop 'em if they have a bad one :)
+drop bad_bpls bpl_oops link_bpl
+
 save "${route}/intermediate_datasets/canada_links.dta", replace // and save them!
 
 
@@ -177,8 +220,8 @@ merge m:1 histid1900 using "${route}/intermediate_datasets/ct_1900_1910.dta", ke
 merge m:1 histid1900 using "${route}/intermediate_datasets/ct_1900_1920.dta", keep(3) nogen // and now we've got them linked to their future selves!!
 
 sort histid1900
-gen id = _n
-reshape long histid, i(id) j(year) 
+gen panel_id = _n
+reshape long histid, i(panel_id) j(year) 
 
 foreach year in 1900 1910 1920 {
 	
@@ -196,7 +239,30 @@ replace bpl_name = proper(bpl_name)
 replace bpl_name = "USA" 	if bpl<99
 replace bpl_name = "Russia" if bpl==465
 
+// we also need to build some extra variables and adjust others:
+*add in the age quartic
+gen age  = year - birthyr
+gen age2 = age * age
+gen age3 = age * age2
+gen age4 = age * age3
+
+*make some adjusted occscore measures for relevant years
+gen occscore2010 = occscore * 900  // this is the (approximate) adjustment to 2010 dollars they made in their analysis
+gen occscore2024 = occscore * 1300 // this is an approximate adjustment to 2024 dollars
+
+*we want to only keep panel links that are consistent on birthplace
+gen link_bpl = bpl if year==1900 	// check the base link year's bpl
+sort panel_id year					// put the base year's bpl on top of the link set
+replace link_bpl = link_bpl[_n-1] if link_bpl==. // fill out the link set
+
+gen bpl_oops = bpl!=link_bpl		// find the disagreements on bpl
+bysort panel_id: egen bad_bpls = max(bpl_oops)	 // mark the link sets with a bad bpl
+drop if bad_bpls!=0					// drop 'em if they have a bad one :)
+drop bad_bpls bpl_oops link_bpl
+
 save "${route}/intermediate_datasets/women_links.dta", replace // and save them!
 */
+
+
 										
 										
