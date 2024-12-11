@@ -1,0 +1,2129 @@
+
+. 
+. *it's gonna do all four of my stata do files. I can't run Eli's code for the figur
+> e and his data structure because I don't have R installed :)
+. 
+. do "${route}/code/01_build_datasets.do"
+
+. /*
+> 
+> step 1: take raw_data and turn it into the following files (in order):
+> 
+>         - canadian_pcs.dta              Pooled cross-section of US & Canadian Men
+>         - women_pcs.dta                 Pooled cross-section of their sample but f
+> emale
+>         
+>         - canadian_linked.dta   Linked sample of US & Canadian Men
+>         - women_linked.dta              Linked sample of their sample but female
+> 
+> */
+. 
+. clear all
+
+. frames reset
+
+. 
+. global route "/Users/tmorg46/Desktop/abe2014_replication/our_stuff"
+
+. 
+. cap mkdir "${route}/intermediate_datasets" // this will create the intermediate_da
+> tasets directory if it's not yet present, like from newly cloned repo (because the
+> re's a gitignore for this subdirectory as well lol)
+
+. 
+. 
+. ************************************************************
+. * build the Canadian men's pooled cross section of 1900-1920
+. ************************************************************
+. // done
+. foreach year in 1900 1910 1920 {
+  2.         use "${route}/raw_data/ipums_sets/ipums_baseline_`year'", clear
+  3.         drop serial pernum sample hhwt gq perwt versionhist raced bpld // extra
+>  variables we don't need that came by default with each sample can go!
+  4. 
+.         *we'll filter the cross-section as they do:
+.         keep if         sex==1                                                  //
+>  men
+  5.         keep if         inrange(birthyr,1865,1882)              // aged 18-35 i
+> n 1900
+  6.         keep if         race==1                                                
+>  // who are white,
+  7. 
+.         keep if         !inlist(stateicp,       ///
+>                                 11,40,41,42,43,44,      ///
+>                                 45,46,47,48,49,51,      ///
+>                                 52,53,54,56,98)                                 //
+>  aren't "in the South",
+  8.                                 
+.         keep if         bpl<99 | bpl==150                               // are nat
+> ive to the US or Canada,
+  9.                                 
+.         keep if         inrange(yrimmig,1880,1900) | ///
+>                                         yrimmig==0                                
+>       // and came to the US between
+ 10.                                                                                
+>                  // 1880-1900 if they're non-native.
+.         
+.         tempfile cross`year'_canada
+ 11.         save `cross`year'_canada', replace // now we have the cross-section for
+>  a given year stored in memory temporarily:
+ 12. }
+(37,180,647 observations deleted)
+(26,775,562 observations deleted)
+(1,362,022 observations deleted)
+(2,437,259 observations deleted)
+(1,651,301 observations deleted)
+(38,882 observations deleted)
+(file /var/folders/r_/hfq80pcj5cv5m4vc2b0b5tr00000gn/T//S_50724.000001 not found)
+file /var/folders/r_/hfq80pcj5cv5m4vc2b0b5tr00000gn/T//S_50724.000001 saved as
+    .dta format
+(44,691,390 observations deleted)
+(35,233,015 observations deleted)
+(1,222,870 observations deleted)
+(2,329,803 observations deleted)
+(2,706,602 observations deleted)
+(66,932 observations deleted)
+(file /var/folders/r_/hfq80pcj5cv5m4vc2b0b5tr00000gn/T//S_50724.000002 not found)
+file /var/folders/r_/hfq80pcj5cv5m4vc2b0b5tr00000gn/T//S_50724.000002 saved as
+    .dta format
+(51,825,109 observations deleted)
+(42,956,784 observations deleted)
+(1,084,399 observations deleted)
+(2,158,871 observations deleted)
+(2,403,181 observations deleted)
+(70,867 observations deleted)
+(file /var/folders/r_/hfq80pcj5cv5m4vc2b0b5tr00000gn/T//S_50724.000003 not found)
+file /var/folders/r_/hfq80pcj5cv5m4vc2b0b5tr00000gn/T//S_50724.000003 saved as
+    .dta format
+
+. 
+. clear
+
+. foreach year in 1900 1910 1920 {
+  2.         append using `cross`year'_canada' // so we can put them all together!
+  3. }
+(label EDSCOR50 already defined)
+(label ERSCOR50 already defined)
+(label PRESGL already defined)
+(label SEI already defined)
+(label OCC1950 already defined)
+(label LIT already defined)
+(label SPEAKENG already defined)
+(label YRSUSA2 already defined)
+(label YRIMMIG already defined)
+(label CITIZEN already defined)
+(label BPL already defined)
+(label RACE already defined)
+(label SEX already defined)
+(label URBAN already defined)
+(label STATEICP already defined)
+(label YEAR already defined)
+(label EDSCOR50 already defined)
+(label ERSCOR50 already defined)
+(label PRESGL already defined)
+(label SEI already defined)
+(label OCC1950 already defined)
+(label LIT already defined)
+(label SPEAKENG already defined)
+(label YRSUSA2 already defined)
+(label YRIMMIG already defined)
+(label CITIZEN already defined)
+(label BPL already defined)
+(label RACE already defined)
+(label SEX already defined)
+(label URBAN already defined)
+(label STATEICP already defined)
+(label YEAR already defined)
+
+. 
+. *we want to mark each birthplace with its proper name for tables later:
+. decode bpl, gen(bpl_name)
+
+. 
+. replace bpl_name = proper(bpl_name)
+(17,403,819 real changes made)
+
+. replace bpl_name = "USA" if bpl<99
+(16,885,274 real changes made)
+
+. 
+. // we also need to build some extra variables and adjust others:
+. *add in the age quartic
+. gen age  = year - birthyr
+
+. gen age2 = age * age
+
+. gen age3 = age * age2
+
+. gen age4 = age * age3
+
+. 
+. *make some adjusted occscore measures for relevant years
+. gen occscore2010 = occscore * 900  // this is the (approximate) adjustment to 2010
+>  dollars they made in their analysis
+
+. gen occscore2024 = occscore * 1300 // this is an approximate adjustment to 2024 do
+> llars
+
+. 
+. save "${route}/intermediate_datasets/canada_pcs.dta", replace // the replicated po
+> oled cross-section is now saved and ready to go!      
+file
+    /Users/tmorg46/Desktop/abe2014_replication/our_stuff/intermediate_datasets/can
+    > ada_pcs.dta saved
+
+. */
+. 
+. 
+. *****************************************************
+. * build the women's pooled cross section of 1900-1920
+. *****************************************************
+. // done
+. foreach year in 1900 1910 1920 {
+  2.         use "${route}/raw_data/ipums_sets/ipums_baseline_`year'", clear
+  3.         drop serial pernum sample hhwt gq perwt versionhist raced bpld // extra
+>  variables we don't need that came by default with each sample can go!
+  4. 
+.         *we'll filter the cross-section as they do:
+.         keep if         sex==2                                          // women
+  5.         keep if         inrange(birthyr,1865,1882)      // aged 18-35 in 1900
+  6.         keep if         race==1                                         // who 
+> are white,
+  7. 
+.         keep if         !inlist(stateicp,       ///
+>                                 11,40,41,42,43,44,      ///
+>                                 45,46,47,48,49,51,      ///
+>                                 52,53,54,56,98)                         // aren't 
+> "in the South",
+  8.                                 
+.         keep if         bpl<99 | bpl==400 |     /// 
+>                                 bpl==401 | bpl==404 |   ///
+>                                 bpl==405 | bpl==410 |   ///
+>                                 bpl==411 | bpl==412 |   ///
+>                                 bpl==414 | bpl==420 |   ///
+>                                 bpl==421 | bpl==426 |   ///
+>                                 bpl==434 | bpl==436 |   ///
+>                                 bpl==450 | bpl==453 |   /// 
+>                                 bpl==465                                        //
+>  are native to the U.S.
+  9.                                                                                
+>          // or the 16 sending countries,
+.                                 
+.         keep if         inrange(yrimmig,1880,1900) | ///
+>                                         yrimmig==0                                
+>       // and came to the US between
+ 10.                                                                                
+>                  // 1880-1900 if they're non-native.
+.         
+.         tempfile cross`year'_women
+ 11.         save `cross`year'_women', replace // now we have the cross-section for 
+> a given year stored in memory temporarily:
+ 12. }
+(38,644,065 observations deleted)
+(25,505,374 observations deleted)
+(1,422,859 observations deleted)
+(2,405,383 observations deleted)
+(458,845 observations deleted)
+(169,852 observations deleted)
+(file /var/folders/r_/hfq80pcj5cv5m4vc2b0b5tr00000gn/T//S_50724.000004 not found)
+file /var/folders/r_/hfq80pcj5cv5m4vc2b0b5tr00000gn/T//S_50724.000004 saved as
+    .dta format
+(47,352,228 observations deleted)
+(33,839,366 observations deleted)
+(1,158,317 observations deleted)
+(2,147,200 observations deleted)
+(407,028 observations deleted)
+(571,397 observations deleted)
+(file /var/folders/r_/hfq80pcj5cv5m4vc2b0b5tr00000gn/T//S_50724.000005 not found)
+file /var/folders/r_/hfq80pcj5cv5m4vc2b0b5tr00000gn/T//S_50724.000005 saved as
+    .dta format
+(53,905,876 observations deleted)
+(42,081,831 observations deleted)
+(901,136 observations deleted)
+(1,915,085 observations deleted)
+(588,123 observations deleted)
+(553,783 observations deleted)
+(file /var/folders/r_/hfq80pcj5cv5m4vc2b0b5tr00000gn/T//S_50724.000006 not found)
+file /var/folders/r_/hfq80pcj5cv5m4vc2b0b5tr00000gn/T//S_50724.000006 saved as
+    .dta format
+
+. 
+. clear
+
+. foreach year in 1900 1910 1920 {
+  2.         append using `cross`year'_women' // so we can put them all together!
+  3. }
+(label EDSCOR50 already defined)
+(label ERSCOR50 already defined)
+(label PRESGL already defined)
+(label SEI already defined)
+(label OCC1950 already defined)
+(label LIT already defined)
+(label SPEAKENG already defined)
+(label YRSUSA2 already defined)
+(label YRIMMIG already defined)
+(label CITIZEN already defined)
+(label BPL already defined)
+(label RACE already defined)
+(label SEX already defined)
+(label URBAN already defined)
+(label STATEICP already defined)
+(label YEAR already defined)
+(label EDSCOR50 already defined)
+(label ERSCOR50 already defined)
+(label PRESGL already defined)
+(label SEI already defined)
+(label OCC1950 already defined)
+(label LIT already defined)
+(label SPEAKENG already defined)
+(label YRSUSA2 already defined)
+(label YRIMMIG already defined)
+(label CITIZEN already defined)
+(label BPL already defined)
+(label RACE already defined)
+(label SEX already defined)
+(label URBAN already defined)
+(label STATEICP already defined)
+(label YEAR already defined)
+
+. 
+. *we want to mark each birthplace with its proper name for tables later:
+. decode bpl, gen(bpl_name)
+
+. 
+. replace bpl_name = proper(bpl_name)
+(19,571,567 real changes made)
+
+. replace bpl_name = "USA"        if bpl<99
+(16,492,844 real changes made)
+
+. replace bpl_name = "Russia" if bpl==465
+(274,106 real changes made)
+
+. 
+. // we also need to build some extra variables and adjust others:
+. *add in the age quartic
+. gen age  = year - birthyr
+
+. gen age2 = age * age
+
+. gen age3 = age * age2
+
+. gen age4 = age * age3
+
+. 
+. *make some adjusted occscore measures for relevant years
+. gen occscore2010 = occscore * 900  // this is the (approximate) adjustment to 2010
+>  dollars they made in their analysis
+
+. gen occscore2024 = occscore * 1300 // this is an approximate adjustment to 2024 do
+> llars
+
+. 
+. 
+. save "${route}/intermediate_datasets/women_pcs.dta", replace // the replicated poo
+> led cross-section is now saved and ready to go!       
+file
+    /Users/tmorg46/Desktop/abe2014_replication/our_stuff/intermediate_datasets/wom
+    > en_pcs.dta saved
+
+. */
+. 
+. 
+. ***********************************************
+. * build the two linked samples across 1900-1920
+. ***********************************************
+. // pending
+. *we gotta narrow down the CT links to the ones we trust the most (and also the one
+> s that actually use the tree lol)
+. foreach year in 1910 1920 {
+  2.         import delimited using "${route}/raw_data/census_tree/1900_`year'.csv",
+>  varn(1) clear
+  3.         
+.         egen methods = rowtotal(clp mlp xgb family_tree direct_hint profile_hint i
+> mplied) // how do I link thee? let me count the ways
+  4.         
+.         drop if (family_tree!=1 & methods<2)    | ///
+>                         (clp==1 & mlp==1 & methods==2)  | ///
+>                         (implied==1 & methods<3)                         // these 
+> are combos that either don't involve the tree or aren't so trustworthy
+  5.                                                                 
+.         drop clp mlp xgb family_tree direct_hint profile_hint implied methods // d
+> on't need all the extra variables once we've cleaned the links up like we did abov
+> e, so yeet!
+  6.         
+.         save "${route}/intermediate_datasets/ct_1900_`year'.dta", replace // now i
+> t's a mergeable file! I would tempfile this normally, but if I don't you can run t
+> his build on just 16gb ram, so I won't here!
+  7. }
+(encoding automatically selected: ISO-8859-1)
+(9 vars, 47,369,378 obs)
+(10,866,571 observations deleted)
+file
+    /Users/tmorg46/Desktop/abe2014_replication/our_stuff/intermediate_datasets/ct_
+    > 1900_1910.dta saved
+(encoding automatically selected: ISO-8859-1)
+(9 vars, 37,239,846 obs)
+(14,037,136 observations deleted)
+file
+    /Users/tmorg46/Desktop/abe2014_replication/our_stuff/intermediate_datasets/ct_
+    > 1900_1920.dta saved
+
+. 
+. *************************************
+. *now let's link those Canadian gents:
+. use histid year if year==1900 using "${route}/intermediate_datasets/canada_pcs.dta
+> ", clear // start with the 1900 folks from the narrowed-down sample (so we don't h
+> ave to narrow it down again)
+
+. drop year
+
+. 
+. rename histid histid1900
+
+. 
+. merge m:1 histid1900 using "${route}/intermediate_datasets/ct_1900_1910.dta", keep
+> (3) nogen
+
+    Result                      Number of obs
+    -----------------------------------------
+    Not matched                             0
+    Matched                         3,181,456  
+    -----------------------------------------
+
+. merge m:1 histid1900 using "${route}/intermediate_datasets/ct_1900_1920.dta", keep
+> (3) nogen // and now we've got them linked to their future selves!!
+
+    Result                      Number of obs
+    -----------------------------------------
+    Not matched                             0
+    Matched                         2,059,231  
+    -----------------------------------------
+
+. 
+. sort histid1900
+
+. gen panel_id = _n
+
+. reshape long histid, i(panel_id) j(year) 
+(j = 1900 1910 1920)
+
+Data                               Wide   ->   Long
+-----------------------------------------------------------------------------
+Number of observations        2,059,231   ->   6,177,693   
+Number of variables                   4   ->   3           
+j variable (3 values)                     ->   year
+xij variables:
+       histid1900 histid1910 histid1920   ->   histid
+-----------------------------------------------------------------------------
+
+. 
+. foreach year in 1900 1910 1920 {
+  2.         
+.         // the update and keep(1 3 4) options allow us to "fill in the gaps" as we
+>  merge each year onto the list of histids
+.         merge m:1 histid using "${route}/raw_data/ipums_sets/ipums_baseline_`year'
+> .dta", keep(1 3 4) update nogen
+  3.         
+. }
+
+    Result                      Number of obs
+    -----------------------------------------
+    Not matched                     4,118,462
+        from master                 4,118,462  
+        from using                          0  
+
+    Matched                         2,059,231
+        not updated                 2,059,231  
+        missing updated                     0  
+        nonmissing conflict                 0  
+    -----------------------------------------
+(label EDSCOR50 already defined)
+(label ERSCOR50 already defined)
+(label PRESGL already defined)
+(label SEI already defined)
+(label OCC1950 already defined)
+(label LIT already defined)
+(label SPEAKENG already defined)
+(label YRSUSA2 already defined)
+(label YRIMMIG already defined)
+(label CITIZEN already defined)
+(label BPLD already defined)
+(label BPL already defined)
+(label RACED already defined)
+(label RACE already defined)
+(label SEX already defined)
+(label VERSIONHIST already defined)
+(label URBAN already defined)
+(label STATEICP already defined)
+(label GQ already defined)
+(label SAMPLE already defined)
+(label YEAR already defined)
+
+    Result                      Number of obs
+    -----------------------------------------
+    Not matched                     4,118,462
+        from master                 4,118,462  
+        from using                          0  
+
+    Matched                         2,059,231
+        not updated                         0  
+        missing updated             2,059,231  
+        nonmissing conflict                 0  
+    -----------------------------------------
+(label EDSCOR50 already defined)
+(label ERSCOR50 already defined)
+(label PRESGL already defined)
+(label SEI already defined)
+(label OCC1950 already defined)
+(label LIT already defined)
+(label SPEAKENG already defined)
+(label YRSUSA2 already defined)
+(label YRIMMIG already defined)
+(label CITIZEN already defined)
+(label BPLD already defined)
+(label BPL already defined)
+(label RACED already defined)
+(label RACE already defined)
+(label SEX already defined)
+(label VERSIONHIST already defined)
+(label URBAN already defined)
+(label STATEICP already defined)
+(label GQ already defined)
+(label SAMPLE already defined)
+(label YEAR already defined)
+
+    Result                      Number of obs
+    -----------------------------------------
+    Not matched                     4,118,462
+        from master                 4,118,462  
+        from using                          0  
+
+    Matched                         2,059,231
+        not updated                         0  
+        missing updated             2,059,231  
+        nonmissing conflict                 0  
+    -----------------------------------------
+
+. 
+. drop serial pernum sample hhwt gq perwt versionhist raced bpld // extra variables 
+> we don't need that came by default with each sample can go!
+
+. 
+. *we want to mark each birthplace with its proper name for tables later:
+. decode bpl, gen(bpl_name)
+
+. 
+. replace bpl_name = proper(bpl_name)
+(6,177,693 real changes made)
+
+. replace bpl_name = "USA"        if bpl<99
+(6,048,548 real changes made)
+
+. 
+. // we also need to build some extra variables and adjust others:
+. *add in the age quartic
+. gen age  = year - birthyr
+
+. gen age2 = age * age
+
+. gen age3 = age * age2
+
+. gen age4 = age * age3
+
+. 
+. *make some adjusted occscore measures for relevant years
+. gen occscore2010 = occscore * 900  // this is the (approximate) adjustment to 2010
+>  dollars they made in their analysis
+
+. gen occscore2024 = occscore * 1300 // this is an approximate adjustment to 2024 do
+> llars
+
+. 
+. *we want to only keep panel links that are consistent on birthplace
+. gen link_bpl = bpl if year==1900        // check the base link year's bpl
+(4,118,462 missing values generated)
+
+. sort panel_id year                                      // put the base year's bpl
+>  on top of the link set
+
+. replace link_bpl = link_bpl[_n-1] if link_bpl==. // fill out the link set
+(4,118,462 real changes made)
+
+. 
+. gen bpl_oops = bpl!=link_bpl            // find the disagreements on bpl
+
+. bysort panel_id: egen bad_bpls = max(bpl_oops)   // mark the link sets with a bad 
+> bpl
+
+. drop if bad_bpls!=0                                     // drop 'em if they have a
+>  bad one :)
+(254,886 observations deleted)
+
+. drop bad_bpls bpl_oops link_bpl
+
+. 
+. save "${route}/intermediate_datasets/canada_links.dta", replace // and save them!
+file
+    /Users/tmorg46/Desktop/abe2014_replication/our_stuff/intermediate_datasets/can
+    > ada_links.dta saved
+
+. 
+. 
+. *************************************
+. *and now we link the ladies!!!!!!!!!:
+. use histid year if year==1900 using "${route}/intermediate_datasets/women_pcs.dta"
+> , clear // start with the 1900 folks from the narrowed-down sample (so we don't ha
+> ve to narrow it down again)
+
+. drop year
+
+. 
+. rename histid histid1900
+
+. 
+. merge m:1 histid1900 using "${route}/intermediate_datasets/ct_1900_1910.dta", keep
+> (3) nogen
+
+    Result                      Number of obs
+    -----------------------------------------
+    Not matched                             0
+    Matched                         3,405,292  
+    -----------------------------------------
+
+. merge m:1 histid1900 using "${route}/intermediate_datasets/ct_1900_1920.dta", keep
+> (3) nogen // and now we've got them linked to their future selves!!
+
+    Result                      Number of obs
+    -----------------------------------------
+    Not matched                             0
+    Matched                         2,152,764  
+    -----------------------------------------
+
+. 
+. sort histid1900
+
+. gen panel_id = _n
+
+. reshape long histid, i(panel_id) j(year) 
+(j = 1900 1910 1920)
+
+Data                               Wide   ->   Long
+-----------------------------------------------------------------------------
+Number of observations        2,152,764   ->   6,458,292   
+Number of variables                   4   ->   3           
+j variable (3 values)                     ->   year
+xij variables:
+       histid1900 histid1910 histid1920   ->   histid
+-----------------------------------------------------------------------------
+
+. 
+. foreach year in 1900 1910 1920 {
+  2.         
+.         // the update and keep(1 3 4) options allow us to "fill in the gaps" as we
+>  merge each year onto the list of histids
+.         merge m:1 histid using "${route}/raw_data/ipums_sets/ipums_baseline_`year'
+> .dta", keep(1 3 4) update nogen
+  3.         
+. }
+
+    Result                      Number of obs
+    -----------------------------------------
+    Not matched                     4,305,528
+        from master                 4,305,528  
+        from using                          0  
+
+    Matched                         2,152,764
+        not updated                 2,152,764  
+        missing updated                     0  
+        nonmissing conflict                 0  
+    -----------------------------------------
+(label EDSCOR50 already defined)
+(label ERSCOR50 already defined)
+(label PRESGL already defined)
+(label SEI already defined)
+(label OCC1950 already defined)
+(label LIT already defined)
+(label SPEAKENG already defined)
+(label YRSUSA2 already defined)
+(label YRIMMIG already defined)
+(label CITIZEN already defined)
+(label BPLD already defined)
+(label BPL already defined)
+(label RACED already defined)
+(label RACE already defined)
+(label SEX already defined)
+(label VERSIONHIST already defined)
+(label URBAN already defined)
+(label STATEICP already defined)
+(label GQ already defined)
+(label SAMPLE already defined)
+(label YEAR already defined)
+
+    Result                      Number of obs
+    -----------------------------------------
+    Not matched                     4,305,528
+        from master                 4,305,528  
+        from using                          0  
+
+    Matched                         2,152,764
+        not updated                         0  
+        missing updated             2,152,764  
+        nonmissing conflict                 0  
+    -----------------------------------------
+(label EDSCOR50 already defined)
+(label ERSCOR50 already defined)
+(label PRESGL already defined)
+(label SEI already defined)
+(label OCC1950 already defined)
+(label LIT already defined)
+(label SPEAKENG already defined)
+(label YRSUSA2 already defined)
+(label YRIMMIG already defined)
+(label CITIZEN already defined)
+(label BPLD already defined)
+(label BPL already defined)
+(label RACED already defined)
+(label RACE already defined)
+(label SEX already defined)
+(label VERSIONHIST already defined)
+(label URBAN already defined)
+(label STATEICP already defined)
+(label GQ already defined)
+(label SAMPLE already defined)
+(label YEAR already defined)
+
+    Result                      Number of obs
+    -----------------------------------------
+    Not matched                     4,305,528
+        from master                 4,305,528  
+        from using                          0  
+
+    Matched                         2,152,764
+        not updated                         0  
+        missing updated             2,152,764  
+        nonmissing conflict                 0  
+    -----------------------------------------
+
+. 
+. drop serial pernum sample hhwt gq perwt versionhist raced bpld // extra variables 
+> we don't need that came by default with each sample can go!
+
+. 
+. *we want to mark each birthplace with its proper name for tables later:
+. decode bpl, gen(bpl_name)
+
+. 
+. replace bpl_name = proper(bpl_name)
+(6,458,292 real changes made)
+
+. replace bpl_name = "USA"        if bpl<99
+(5,842,267 real changes made)
+
+. replace bpl_name = "Russia" if bpl==465
+(36,080 real changes made)
+
+. 
+. // we also need to build some extra variables and adjust others:
+. *add in the age quartic
+. gen age  = year - birthyr
+
+. gen age2 = age * age
+
+. gen age3 = age * age2
+
+. gen age4 = age * age3
+
+. 
+. *make some adjusted occscore measures for relevant years
+. gen occscore2010 = occscore * 900  // this is the (approximate) adjustment to 2010
+>  dollars they made in their analysis
+
+. gen occscore2024 = occscore * 1300 // this is an approximate adjustment to 2024 do
+> llars
+
+. 
+. *we want to only keep panel links that are consistent on birthplace
+. gen link_bpl = bpl if year==1900        // check the base link year's bpl
+(4,305,528 missing values generated)
+
+. sort panel_id year                                      // put the base year's bpl
+>  on top of the link set
+
+. replace link_bpl = link_bpl[_n-1] if link_bpl==. // fill out the link set
+(4,305,528 real changes made)
+
+. 
+. gen bpl_oops = bpl!=link_bpl            // find the disagreements on bpl
+
+. bysort panel_id: egen bad_bpls = max(bpl_oops)   // mark the link sets with a bad 
+> bpl
+
+. drop if bad_bpls!=0                                     // drop 'em if they have a
+>  bad one :)
+(366,075 observations deleted)
+
+. drop bad_bpls bpl_oops link_bpl
+
+. 
+. save "${route}/intermediate_datasets/women_links.dta", replace // and save them!
+file
+    /Users/tmorg46/Desktop/abe2014_replication/our_stuff/intermediate_datasets/wom
+    > en_links.dta saved
+
+. */
+. 
+. 
+.                                                                                 
+.                                                                                 
+. 
+end of do-file
+
+. 
+. do "${route}/code/02_table2.do"
+
+. /*
+> 
+> step 2: replicate Table 1 from the ABE paper
+> 
+> */
+. 
+. clear all
+
+. frames reset
+
+. 
+. global route "/Users/tmorg46/Desktop/abe2014_replication/our_stuff"
+
+. 
+. 
+. ******************************************************
+. * Replicate their Table 1 - Sample Sizes & Match Rates
+. ******************************************************
+. // pending
+. *we need to get 1900 baseline number-in-universe counts, so we'll loop through our
+>  pooled-cs and panel specifications:
+. foreach spec in pcs links {
+  2.                 
+.         *open the canadian version first:
+.         use if year==1900 using "${route}/intermediate_datasets/canada_`spec'.dta"
+> , clear
+  3.                 
+.         *loop through the two birthplaces
+.         foreach bpl_name in USA Canada {
+  4.                 
+.                 qui sum year if bpl_name=="`bpl_name'"
+  5.                 local `spec'_`bpl_name'_men = r(N) // this stores the count in 
+> a local!
+  6.                 
+.         }
+  7. 
+.         *now let's go get the ladies:
+.         use if year==1900 using "${route}/intermediate_datasets/women_`spec'.dta",
+>  clear
+  8. 
+.         *and now loop through all the countries:
+.         levelsof bpl_name, local(bpl_names) // get them all into a list in a local
+  9. 
+.         foreach bpl_name of local bpl_names { // and loop through that local!
+ 10.                 
+.                 qui sum year if bpl_name=="`bpl_name'"
+ 11.                 local `spec'_`bpl_name'_women = r(N)
+ 12.                 
+.         }
+ 13. }
+`"Austria"' `"Belgium"' `"Denmark"' `"England"' `"Finland"' `"France"' `"Germany"' `
+> "Ireland"' `"Italy"' `"Norway"' `"Portugal"' `"Russia"' `"Scotland"' `"Sweden"' `"
+> Switzerland"' `"USA"' `"Wales"'
+`"Austria"' `"Belgium"' `"Denmark"' `"England"' `"Finland"' `"France"' `"Germany"' `
+> "Ireland"' `"Italy"' `"Norway"' `"Portugal"' `"Russia"' `"Scotland"' `"Sweden"' `"
+> Switzerland"' `"USA"' `"Wales"'
+
+. 
+. 
+. *now calculate the link rates and put them in even more locals!
+. foreach bpl_name in USA Canada { // start with the men
+  2. 
+.         local linkrate_`bpl_name'_men = `links_`bpl_name'_men' / `pcs_`bpl_name'_m
+> en'
+  3. 
+. }
+
+. 
+. foreach bpl_name of local bpl_names { // and now the women:
+  2. 
+.         local linkrate_`bpl_name'_women = `links_`bpl_name'_women' / `pcs_`bpl_nam
+> e'_women'
+  3.         
+. }
+
+. 
+. 
+. *and put everything into a matrix for the table later!!
+. matrix men = J(2,3,.)
+
+. 
+. matrix rownames men = Canada USA
+
+. 
+. matrix men[1,1] = `pcs_Canada_men'
+
+. matrix men[1,2] = `links_Canada_men'
+
+. matrix men[1,3] = `linkrate_Canada_men'
+
+. 
+. matrix men[2,1] = `pcs_USA_men'
+
+. matrix men[2,2] = `links_USA_men'
+
+. matrix men[2,3] = `linkrate_USA_men'
+
+. 
+. matrix men_count = men[1..., 1..2]
+
+. matrix men_rates = men[1..., 3] // this splits the matrix so we can format the num
+> bers nicely later
+
+. 
+. 
+. *now put the women's results into their own separate matrix:
+. matrix women = J(17,3,.) // the 16 sending countries + USA each get a row
+
+. 
+. matrix rownames women = ///
+>         Austria Belgium Denmark ///
+>         England Finland France  ///
+>         Germany Ireland Italy   ///
+>         Norway Portugal Russia  ///
+>         Scotland Sweden                 ///
+>         Switzerland Wales USA           // we've named the rows of this matrix now
+> , so it's nice later!
+
+. 
+. local count = 1 // this will let us iterate through countries by row
+
+. 
+. foreach bpl_name in ///
+>         Austria Belgium Denmark ///
+>         England Finland France  ///
+>         Germany Ireland Italy   ///
+>         Norway Portugal Russia  ///
+>         Scotland Sweden                 ///
+>         Switzerland Wales USA {         // I want this specific order for the tabl
+> e
+  2.         
+.         matrix women[`count',1] = `pcs_`bpl_name'_women'
+  3.         matrix women[`count',2] = `links_`bpl_name'_women'
+  4.         matrix women[`count',3] = `linkrate_`bpl_name'_women'
+  5.         
+.         local count = `count' + 1
+  6. }
+
+. 
+. matrix women_count = women[1..., 1..2]
+
+. matrix women_rates = women[1..., 3] // this splits the matrix so we can format the
+>  numbers nicely later:
+
+. 
+. 
+. *now it's time to put together the table into an Excel file:
+. putexcel set "${route}/output/tables", sheet(table1, replace) modify // we're repl
+> acing the table1 sheet but modifying the document as a whole; this avoids deleting
+>  other tables later but still lets us refresh this table on each rerun
+
+. 
+. putexcel A1  = "Country"                ///
+>                  B1  = "1900 Sample"    ///
+>                  C1  = "Linked Sample"  ///
+>                  D1  = "Link Rate"
+file /Users/tmorg46/Desktop/abe2014_replication/our_stuff/output/tables.xlsx saved
+
+. 
+. putexcel A2  = "Men"
+file /Users/tmorg46/Desktop/abe2014_replication/our_stuff/output/tables.xlsx saved
+
+. putexcel A3  = matrix(men_count), rownames nformat(#,###)
+file /Users/tmorg46/Desktop/abe2014_replication/our_stuff/output/tables.xlsx saved
+
+. putexcel D3  = matrix(men_rates), nformat(#.000)
+file /Users/tmorg46/Desktop/abe2014_replication/our_stuff/output/tables.xlsx saved
+
+.                  
+. 
+. putexcel A5  = "Women"
+file /Users/tmorg46/Desktop/abe2014_replication/our_stuff/output/tables.xlsx saved
+
+. putexcel A6  = matrix(women_count), rownames nformat(#,###)
+file /Users/tmorg46/Desktop/abe2014_replication/our_stuff/output/tables.xlsx saved
+
+. putexcel D6  = matrix(women_rates), nformat(#.000)
+file /Users/tmorg46/Desktop/abe2014_replication/our_stuff/output/tables.xlsx saved
+
+. 
+. // and now we're done! we can hand put it into LaTeX because then it will be prett
+> y :)
+. 
+. 
+. 
+. 
+. 
+. 
+. 
+. 
+. 
+. 
+. 
+end of do-file
+
+. 
+. do "${route}/code/03_table3.do"
+
+. /*
+> 
+> step 3: replicate Table 4 from the ABE paper
+> 
+> */
+. 
+. clear all
+
+. frames reset
+
+. 
+. global route "/Users/tmorg46/Desktop/abe2014_replication/our_stuff"
+
+. 
+. 
+. **********************************************
+. * Replicate their Table 4 - PCS vs PCS + Panel
+. **********************************************
+. // pending
+. *start with the Canadian men; the specs have to be a bit different because of coun
+> try fixed effects, etc.
+. use "${route}/intermediate_datasets/canada_pcs.dta", clear
+
+. 
+. *do the column 1 regression: just on the pooled cross-section. we don't have birth
+> place fixed effects because it's only canada or not, and that indicator is colline
+> ar with the yrsusa fixed effects
+. reg occscore2010 i.yrsusa2 i.year age age2 age3 age4, robust
+
+Linear regression                               Number of obs     =   17403819
+                                                F(11, 17403807)   >   99999.00
+                                                Prob > F          =     0.0000
+                                                R-squared         =     0.0558
+                                                Root MSE          =      11444
+
+------------------------------------------------------------------------------
+             |               Robust
+occscore2010 | Coefficient  std. err.      t    P>|t|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+     yrsusa2 |
+  0-5 years  |   1237.227   40.28709    30.71   0.000     1158.266    1316.189
+ 6-10 years  |   1941.889   45.20055    42.96   0.000     1853.298    2030.481
+11-15 years  |   1563.861   39.90582    39.19   0.000     1485.647    1642.075
+16-20 years  |   1025.109    35.8394    28.60   0.000     954.8651    1095.353
+  21+ years  |   948.4439   25.13984    37.73   0.000     899.1707    997.7171
+             |
+        year |
+       1910  |   2152.507   9.309033   231.23   0.000     2134.262    2170.753
+       1920  |   2643.257   13.47263   196.19   0.000     2616.851    2669.663
+             |
+         age |   7831.591   53.51017   146.36   0.000     7726.713    7936.469
+        age2 |   -281.302   2.410031  -116.72   0.000    -286.0256   -276.5784
+        age3 |   4.499332   .0463275    97.12   0.000     4.408531    4.590132
+        age4 |  -.0271864   .0003221   -84.41   0.000    -.0278176   -.0265551
+       _cons |  -62419.33   426.7327  -146.27   0.000    -63255.71   -61582.95
+------------------------------------------------------------------------------
+
+. 
+. matrix define tab4col1_beta_can = r(table)[1,2..6]' // this puts the coefficients 
+> from the yrsusa2 fixed effects into a column vector we can use later
+
+. matrix define tab4col1_ster_can = r(table)[2,2..6]' // and the standard errors
+
+. local col1_N_can = e(N) // we need the observation count as well!!
+
+. 
+. 
+. *now let's get the panel folks in and marked, then run the next two columns
+. append using "${route}/intermediate_datasets/canada_links.dta"
+(label YEAR already defined)
+(label STATEICP already defined)
+(label URBAN already defined)
+(label SEX already defined)
+(label RACE already defined)
+(label BPL already defined)
+(label CITIZEN already defined)
+(label YRIMMIG already defined)
+(label YRSUSA2 already defined)
+(label SPEAKENG already defined)
+(label LIT already defined)
+(label OCC1950 already defined)
+(label SEI already defined)
+(label PRESGL already defined)
+(label ERSCOR50 already defined)
+(label EDSCOR50 already defined)
+
+. gen in_panel   = !missing(panel_id) // if it ain't missing they're in the panel
+
+. gen post1890   = yrimmig>1890
+
+. 
+. gen panel_post   = in_panel * post1890
+
+. replace post1890 = 0 if panel_post==1 // they get a negative coefficient on Arrive
+>  1891+ via this interaction, which makes sense in their paper, so we'll do it here
+(35,907 real changes made)
+
+. 
+. *they do some more funky adjustments to the fixed effects values for their tables,
+>  so we'll replicate them here (basically trying to add coefficients together pre-r
+> egression)
+. tab yrsusa2, gen(I_yrs)
+
+   years in |
+ the united |
+    states, |
+intervalled |      Freq.     Percent        Cum.
+------------+-----------------------------------
+        n/a | 22,707,923       97.35       97.35
+  0-5 years |     76,450        0.33       97.68
+ 6-10 years |     69,417        0.30       97.97
+11-15 years |     88,076        0.38       98.35
+16-20 years |    115,838        0.50       98.85
+  21+ years |    268,922        1.15      100.00
+------------+-----------------------------------
+      Total | 23,326,626      100.00
+
+. foreach var of varlist I_yrs* {
+  2.         gen P_`var' = in_panel * `var'          // an interaction term with bei
+> ng in the panel
+  3.         replace `var' = 0 if in_panel==1        // this is the weird one
+  4. }
+(5,822,649 real changes made)
+(8,419 real changes made)
+(10,770 real changes made)
+(14,066 real changes made)
+(18,627 real changes made)
+(48,276 real changes made)
+
+. 
+. *run the column 2 and 3 regression!!
+. reg occscore2010                /// we have to do a gross regression here because 
+> they hate us
+>         I_yrs2 I_yrs3 I_yrs4 I_yrs5 I_yrs6                                        
+>       /// These are the fixed effects on duration for the cross-section, leaving o
+> ut the natives (they're in I_yrs1)
+>         P_I_yrs2 P_I_yrs3 P_I_yrs4 P_I_yrs5 P_I_yrs6 P_I_yrs1   /// these are the 
+> interactions on immigrant duration for the panel folks
+>         post1890 panel_post                                                       
+>                       ///  gotta add these
+>         i.year age age2 age3 age4, robust
+
+Linear regression                               Number of obs     =   23326626
+                                                F(19, 23326606)   =   84314.87
+                                                Prob > F          =     0.0000
+                                                R-squared         =     0.0557
+                                                Root MSE          =      11443
+
+------------------------------------------------------------------------------
+             |               Robust
+occscore2010 | Coefficient  std. err.      t    P>|t|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+      I_yrs2 |   939.0927   50.22348    18.70   0.000     840.6564    1037.529
+      I_yrs3 |   1653.948   51.62491    32.04   0.000     1552.765    1755.131
+      I_yrs4 |   1358.184   42.27877    32.12   0.000     1275.319    1441.049
+      I_yrs5 |    823.314   38.07906    21.62   0.000     748.6804    897.9476
+      I_yrs6 |   812.6112   26.07826    31.16   0.000     761.4987    863.7236
+    P_I_yrs2 |   939.0393   144.9433     6.48   0.000     654.9556    1223.123
+    P_I_yrs3 |     1902.2   130.5723    14.57   0.000     1646.283    2158.117
+    P_I_yrs4 |   1760.232   101.6899    17.31   0.000     1560.924    1959.541
+    P_I_yrs5 |   1351.206   88.78146    15.22   0.000     1177.198    1525.215
+    P_I_yrs6 |   1692.096   55.60952    30.43   0.000     1583.103    1801.088
+    P_I_yrs1 |    -367.22   5.503036   -66.73   0.000    -378.0058   -356.4343
+    post1890 |   459.9942   35.77783    12.86   0.000      389.871    530.1175
+  panel_post |   1098.795   87.42264    12.57   0.000     927.4495     1270.14
+             |
+        year |
+       1910  |   2049.254   7.889665   259.74   0.000      2033.79    2064.717
+       1920  |    2597.07   11.32569   229.31   0.000     2574.873    2619.268
+             |
+         age |   4722.786   23.74869   198.87   0.000     4676.239    4769.333
+        age2 |  -140.1917   .9431651  -148.64   0.000    -142.0402   -138.3431
+        age3 |   1.781895   .0157914   112.84   0.000     1.750944    1.812845
+        age4 |   -.008325   .0000951   -87.56   0.000    -.0085113   -.0081386
+       _cons |  -38038.19   211.8697  -179.54   0.000    -38453.45   -37622.93
+------------------------------------------------------------------------------
+
+.         
+. matrix define tab4col2_3_beta_can = r(table)[1,1..13]' // this puts the coefficien
+> ts from the yrsusa2 fixed effects into a column vector we can use later
+
+. matrix define tab4col2_3_ster_can = r(table)[2,1..13]' // and the standard errors
+
+. local col2_3_N_can = e(N) // we need the observation count as well!!
+
+. 
+. 
+. *now it's time to put together the table into an Excel file:
+. putexcel set "${route}/output/tables", sheet(table4_can, replace) modify // we're 
+> replacing the table4 sheet but modifying the document as a whole; this avoids dele
+> ting other tables later but still lets us refresh this table on each rerun
+
+. putexcel A1  = "Canadian men"
+file /Users/tmorg46/Desktop/abe2014_replication/our_stuff/output/tables.xlsx saved
+
+.                  
+. putexcel B2  = "PCS Only"               ///  
+>                  B3  = `col1_N_can'     ///
+>                  A4  = matrix(tab4col1_beta_can), rownames nformat(#,###.00)
+file /Users/tmorg46/Desktop/abe2014_replication/our_stuff/output/tables.xlsx saved
+
+.                  
+. putexcel C2  = "St. Errs"               ///
+>                  C4  = matrix(tab4col1_ster_can), nformat(#.00)
+file /Users/tmorg46/Desktop/abe2014_replication/our_stuff/output/tables.xlsx saved
+
+.                  
+. putexcel F2  = "Combo Values"   ///
+>                  F3      = `col2_3_N_can'       ///
+>                  E4      = matrix(tab4col2_3_beta_can), rownames nformat(#,###.00)
+file /Users/tmorg46/Desktop/abe2014_replication/our_stuff/output/tables.xlsx saved
+
+.                  
+. putexcel G4  = matrix(tab4col2_3_ster_can), nformat(#.00)
+file /Users/tmorg46/Desktop/abe2014_replication/our_stuff/output/tables.xlsx saved
+
+. putexcel E14 = "Native-born"
+file /Users/tmorg46/Desktop/abe2014_replication/our_stuff/output/tables.xlsx saved
+
+. 
+. 
+. ********************************
+. * Now let's get the ladies done!
+. use "${route}/intermediate_datasets/women_pcs.dta", clear
+
+. 
+. *we need a numeric bpl version for easy fixed effects:
+. replace bpl = 1 if bpl<100 // now all the american folks have the same bpl, and it
+> 'll be the excluded one in i. specifications
+(16,482,198 real changes made)
+
+. 
+. *do the column 1 regression: just on the pooled cross-section. we don't have birth
+> place fixed effects because it's only canada or not, and that indicator is colline
+> ar with the yrsusa fixed effects
+. reg occscore2010 i.yrsusa2 i.year age age2 age3 age4 i.bpl, robust
+note: 465.bpl omitted because of collinearity.
+
+Linear regression                               Number of obs     =   19571567
+                                                F(26, 19571540)   =   10687.63
+                                                Prob > F          =     0.0000
+                                                R-squared         =     0.0131
+                                                Root MSE          =     7491.3
+
+-----------------------------------------------------------------------------------
+                  |               Robust
+     occscore2010 | Coefficient  std. err.      t    P>|t|     [95% conf. interval]
+------------------+----------------------------------------------------------------
+          yrsusa2 |
+       0-5 years  |  -254.9949   18.29807   -13.94   0.000    -290.8585   -219.1313
+      6-10 years  |   -927.298   16.55547   -56.01   0.000    -959.7461   -894.8499
+     11-15 years  |  -1056.509   15.90478   -66.43   0.000    -1087.682   -1025.336
+     16-20 years  |  -856.7893   15.29354   -56.02   0.000    -886.7641   -826.8145
+       21+ years  |  -1086.508   14.31276   -75.91   0.000    -1114.561   -1058.456
+                  |
+             year |
+            1910  |   806.1227   5.587558   144.27   0.000     795.1713    817.0741
+            1920  |   1431.435    8.05385   177.73   0.000      1415.65     1447.22
+                  |
+              age |   2876.576   34.35759    83.72   0.000     2809.236    2943.915
+             age2 |  -145.3586   1.524497   -95.35   0.000    -148.3466   -142.3707
+             age3 |   2.913419   .0289109   100.77   0.000     2.856754    2.970083
+             age4 |  -.0205661   .0001985  -103.60   0.000    -.0209552    -.020177
+                  |
+              bpl |
+         denmark  |  -373.8019   25.70168   -14.54   0.000    -424.1762   -323.4275
+         finland  |  -627.5025   28.75609   -21.82   0.000    -683.8634   -571.1416
+          norway  |  -181.0455   20.34079    -8.90   0.000    -220.9127   -141.1782
+          sweden  |   27.78255   16.71399     1.66   0.096    -4.976274    60.54137
+         england  |   1358.894   20.14112    67.47   0.000     1319.418     1398.37
+        scotland  |   1432.464   30.72151    46.63   0.000     1372.251    1492.678
+           wales  |  -108.5666   40.85616    -2.66   0.008    -188.6432   -28.48995
+         ireland  |   1397.524   15.70154    89.01   0.000      1366.75    1428.298
+         belgium  |   -127.522   61.45496    -2.08   0.038    -247.9715   -7.072489
+          france  |   1589.206   44.64597    35.60   0.000     1501.701     1676.71
+     switzerland  |   419.7841   35.95984    11.67   0.000     349.3042    490.2641
+           italy  |   -328.395   19.25419   -17.06   0.000    -366.1325   -290.6575
+        portugal  |   388.3841   52.70527     7.37   0.000     285.0837    491.6846
+         austria  |  -188.5321   19.58712    -9.63   0.000    -226.9221    -150.142
+         germany  |   16.22016   14.99626     1.08   0.279    -13.17198    45.61229
+other ussr/rus..  |          0  (omitted)
+                  |
+            _cons |  -14482.72   278.3324   -52.03   0.000    -15028.24    -13937.2
+-----------------------------------------------------------------------------------
+
+. 
+. matrix define tab4col1_beta_wom = r(table)[1,2..6]' // this puts the coefficients 
+> from the yrsusa2 fixed effects into a column vector we can use later
+
+. matrix define tab4col1_ster_wom = r(table)[2,2..6]' // and the standard errors
+
+. local col1_N_wom = e(N) // we need the observation count as well!!
+
+. 
+. 
+. *now let's get the panel folks in and marked, then run the next two columns
+. append using "${route}/intermediate_datasets/women_links.dta"
+(label YEAR already defined)
+(label STATEICP already defined)
+(label URBAN already defined)
+(label SEX already defined)
+(label RACE already defined)
+(label BPL already defined)
+(label CITIZEN already defined)
+(label YRIMMIG already defined)
+(label YRSUSA2 already defined)
+(label SPEAKENG already defined)
+(label LIT already defined)
+(label OCC1950 already defined)
+(label SEI already defined)
+(label PRESGL already defined)
+(label ERSCOR50 already defined)
+(label EDSCOR50 already defined)
+
+. replace bpl = 1 if bpl<100 // same as above, just gotta do it again post-append
+(5,578,488 real changes made)
+
+. 
+. gen in_panel   = !missing(panel_id) // if it ain't missing they're in the panel
+
+. gen post1890   = yrimmig>1890
+
+. 
+. gen panel_post   = in_panel * post1890
+
+. replace post1890 = 0 if panel_post==1 // they get a negative coefficient on Arrive
+>  1891+ via this interaction, which makes sense in their paper, so we'll do it here
+(163,287 real changes made)
+
+. 
+. *they do some more funky adjustments to the fixed effects values for their tables,
+>  so we'll replicate them here (basically trying to add coefficients together pre-r
+> egression)
+. tab yrsusa2, gen(I_yrs)
+
+   years in |
+ the united |
+    states, |
+intervalled |      Freq.     Percent        Cum.
+------------+-----------------------------------
+        n/a | 22,072,769       86.01       86.01
+  0-5 years |    332,390        1.30       87.30
+ 6-10 years |    414,948        1.62       88.92
+11-15 years |    509,564        1.99       90.91
+16-20 years |    721,615        2.81       93.72
+  21+ years |  1,612,498        6.28      100.00
+------------+-----------------------------------
+      Total | 25,663,784      100.00
+
+. foreach var of varlist I_yrs* {
+  2.         gen P_`var' = in_panel * `var'          // an interaction term with bei
+> ng in the panel
+  3.         replace `var' = 0 if in_panel==1        // this is the weird one
+  4. }
+(5,579,925 real changes made)
+(31,838 real changes made)
+(53,782 real changes made)
+(67,013 real changes made)
+(100,520 real changes made)
+(259,139 real changes made)
+
+. 
+. *run the column 2 and 3 regression!!
+. reg occscore2010                /// we have to do a gross regression here because 
+> they hate us
+>         I_yrs2 I_yrs3 I_yrs4 I_yrs5 I_yrs6                                        
+>       /// These are the fixed effects on duration for the cross-section, leaving o
+> ut the natives (they're in I_yrs1)
+>         P_I_yrs2 P_I_yrs3 P_I_yrs4 P_I_yrs5 P_I_yrs6 P_I_yrs1   /// these are the 
+> interactions on immigrant duration for the panel folks
+>         post1890 panel_post                                                       
+>                       ///  gotta add these
+>         i.year age age2 age3 age4 i.bpl, robust
+note: 465.bpl omitted because of collinearity.
+
+Linear regression                               Number of obs     =   25663784
+                                                F(34, 25663749)   =   17572.34
+                                                Prob > F          =     0.0000
+                                                R-squared         =     0.0196
+                                                Root MSE          =     7165.4
+
+-----------------------------------------------------------------------------------
+                  |               Robust
+     occscore2010 | Coefficient  std. err.      t    P>|t|     [95% conf. interval]
+------------------+----------------------------------------------------------------
+           I_yrs2 |   65.11074   19.16428     3.40   0.001     27.54945     102.672
+           I_yrs3 |  -651.7769   17.48196   -37.28   0.000    -686.0409   -617.5129
+           I_yrs4 |  -907.5652    15.9603   -56.86   0.000    -938.8468   -876.2836
+           I_yrs5 |  -717.7722   15.55908   -46.13   0.000    -748.2675    -687.277
+           I_yrs6 |  -1035.934   13.72859   -75.46   0.000    -1062.842   -1009.027
+         P_I_yrs2 |  -2856.083   28.47306  -100.31   0.000    -2911.889   -2800.277
+         P_I_yrs3 |  -2899.855   23.28057  -124.56   0.000    -2945.484   -2854.226
+         P_I_yrs4 |  -2635.404   20.67821  -127.45   0.000    -2675.932   -2594.875
+         P_I_yrs5 |  -2314.497    20.5883  -112.42   0.000    -2354.849   -2274.144
+         P_I_yrs6 |  -2175.833   16.10105  -135.14   0.000     -2207.39   -2144.275
+         P_I_yrs1 |  -1391.473   3.206336  -433.98   0.000    -1397.757   -1385.189
+         post1890 |  -211.9581      8.341   -25.41   0.000    -228.3062   -195.6101
+       panel_post |   54.34837   15.33604     3.54   0.000     24.29028    84.40646
+                  |
+             year |
+            1910  |   903.2263   4.684597   192.81   0.000     894.0446    912.4079
+            1920  |    1748.19   6.734581   259.58   0.000     1734.991     1761.39
+                  |
+              age |  -143.0572   13.99488   -10.22   0.000    -170.4867   -115.6278
+             age2 |  -6.193368   .5657811   -10.95   0.000    -7.302279   -5.084457
+             age3 |    .186494   .0097542    19.12   0.000     .1673761     .205612
+             age4 |  -.0013478   .0000611   -22.05   0.000    -.0014675    -.001228
+                  |
+              bpl |
+         denmark  |  -316.8703   22.46249   -14.11   0.000    -360.8959   -272.8446
+         finland  |  -561.9596   26.76216   -21.00   0.000    -614.4125   -509.5067
+          norway  |  -146.5852   18.02119    -8.13   0.000    -181.9061   -111.2643
+          sweden  |   18.81557   15.12915     1.24   0.214    -10.83701    48.46816
+         england  |   1252.285   18.01973    69.50   0.000     1216.967    1287.603
+        scotland  |   1316.434   27.10047    48.58   0.000     1263.318     1369.55
+           wales  |  -126.1344   35.66881    -3.54   0.000     -196.044   -56.22482
+         ireland  |   1257.732   14.56891    86.33   0.000     1229.177    1286.286
+         belgium  |  -105.4858   55.36176    -1.91   0.057    -213.9929    3.021232
+          france  |   1500.576   42.07998    35.66   0.000       1418.1    1583.051
+     switzerland  |   372.6382   31.74206    11.74   0.000     310.4249    434.8515
+           italy  |  -304.4172   18.12947   -16.79   0.000    -339.9503   -268.8841
+        portugal  |   331.1844   49.03317     6.75   0.000     235.0812    427.2877
+         austria  |  -197.9288   18.62171   -10.63   0.000    -234.4267    -161.431
+         germany  |   12.01055   13.84379     0.87   0.386    -15.12279    39.14388
+other ussr/rus..  |          0  (omitted)
+                  |
+            _cons |   8875.793    124.078    71.53   0.000     8632.604    9118.981
+-----------------------------------------------------------------------------------
+
+.         
+. matrix define tab4col2_3_beta_wom = r(table)[1,1..13]' // this puts the coefficien
+> ts from the yrsusa2 fixed effects into a column vector we can use later
+
+. matrix define tab4col2_3_ster_wom = r(table)[2,1..13]' // and the standard errors
+
+. local col2_3_N_wom = e(N) // we need the observation count as well!!
+
+. 
+. 
+. *now it's time to put together the table into an Excel file:
+. putexcel set "${route}/output/tables", sheet(table4_wom, replace) modify // we're 
+> replacing the table4 sheet but modifying the document as a whole; this avoids dele
+> ting other tables later but still lets us refresh this table on each rerun
+
+. putexcel A1  = "European women"
+file /Users/tmorg46/Desktop/abe2014_replication/our_stuff/output/tables.xlsx saved
+
+.                  
+. putexcel B2  = "PCS Only"               ///  
+>                  B3  = `col1_N_wom'     ///
+>                  A4  = matrix(tab4col1_beta_wom), rownames nformat(#,###.00)
+file /Users/tmorg46/Desktop/abe2014_replication/our_stuff/output/tables.xlsx saved
+
+.                  
+. putexcel C2  = "St. Errs"               ///
+>                  C4  = matrix(tab4col1_ster_wom), nformat(#.00)
+file /Users/tmorg46/Desktop/abe2014_replication/our_stuff/output/tables.xlsx saved
+
+.                  
+. putexcel F2  = "Combo Values"   ///
+>                  F3      = `col2_3_N_wom'       ///
+>                  E4      = matrix(tab4col2_3_beta_wom), rownames nformat(#,###.00)
+file /Users/tmorg46/Desktop/abe2014_replication/our_stuff/output/tables.xlsx saved
+
+.                  
+. putexcel G4  = matrix(tab4col2_3_ster_wom), nformat(#.00)
+file /Users/tmorg46/Desktop/abe2014_replication/our_stuff/output/tables.xlsx saved
+
+. putexcel E14 = "Native-born"
+file /Users/tmorg46/Desktop/abe2014_replication/our_stuff/output/tables.xlsx saved
+
+. 
+. // and now we're done! we can hand put it into LaTeX from tables.xlsx because then
+>  it will be pretty :)
+. 
+. 
+. 
+. 
+. 
+. 
+. 
+. 
+. 
+. 
+. 
+end of do-file
+
+. 
+. do "${route}/code/04_table4.do"
+
+. /*
+> 
+> step 4: replicate Table 6 from the ABE paper
+> 
+> */
+. 
+. clear all
+
+. frames reset
+
+. 
+. global route "/Users/tmorg46/Desktop/abe2014_replication/our_stuff"
+
+. 
+. 
+. ****************************************************************************
+. * Replicate their Table 6 - PCS vs PCS + Panel with U.S. state fixed effects
+. ****************************************************************************
+. // pending
+. *start with the Canadian men; the specs have to be a bit different because of coun
+> try fixed effects, etc.
+. use "${route}/intermediate_datasets/canada_pcs.dta", clear
+
+. 
+. *do the column 1 regression: just on the pooled cross-section. we don't have birth
+> place fixed effects because it's only canada or not, and that indicator is colline
+> ar with the yrsusa fixed effects
+. reg occscore2010 i.yrsusa2 i.year age age2 age3 age4 i.stateicp, robust
+
+Linear regression                               Number of obs     =   17403819
+                                                F(42, 17403776)   =   40907.21
+                                                Prob > F          =     0.0000
+                                                R-squared         =     0.0749
+                                                Root MSE          =      11328
+
+--------------------------------------------------------------------------------
+               |               Robust
+  occscore2010 | Coefficient  std. err.      t    P>|t|     [95% conf. interval]
+---------------+----------------------------------------------------------------
+       yrsusa2 |
+    0-5 years  |   837.5111   40.64714    20.60   0.000     757.8441     917.178
+   6-10 years  |   1458.483   45.70577    31.91   0.000     1368.902    1548.065
+  11-15 years  |   1117.717   40.29022    27.74   0.000     1038.749    1196.684
+  16-20 years  |   761.6953   36.04977    21.13   0.000     691.0391    832.3516
+    21+ years  |   679.0934   25.48898    26.64   0.000     629.1359    729.0509
+               |
+          year |
+         1910  |    2192.01   9.241868   237.18   0.000     2173.896    2210.124
+         1920  |   2698.628   13.35998   201.99   0.000     2672.443    2724.813
+               |
+           age |   7785.854   52.91338   147.14   0.000     7682.146    7889.563
+          age2 |  -279.6669   2.383772  -117.32   0.000     -284.339   -274.9948
+          age3 |   4.469137   .0458317    97.51   0.000     4.379308    4.558965
+          age4 |  -.0269706   .0003187   -84.63   0.000    -.0275952    -.026346
+               |
+      stateicp |
+        maine  |  -3451.114   31.33362  -110.14   0.000    -3512.527   -3389.701
+massachusetts  |   418.3937   25.71782    16.27   0.000     367.9877    468.7997
+new hampshire  |  -2117.432   36.51133   -57.99   0.000    -2188.993   -2045.871
+ rhode island  |   804.6691   38.09309    21.12   0.000      730.008    879.3302
+      vermont  |   -3986.08    39.2619  -101.53   0.000    -4063.032   -3909.128
+   new jersey  |   861.5554   26.98137    31.93   0.000     808.6729    914.4379
+     new york  |  -109.5731   23.92117    -4.58   0.000    -156.4577   -62.68846
+ pennsylvania  |  -198.9516   23.79777    -8.36   0.000    -245.5944   -152.3089
+     illinois  |  -2015.168   24.44193   -82.45   0.000    -2063.074   -1967.263
+      indiana  |  -3051.335   25.17483  -121.21   0.000    -3100.676   -3001.993
+     michigan  |  -2835.854   25.58713  -110.83   0.000    -2886.004   -2785.704
+         ohio  |  -1366.129   24.22558   -56.39   0.000    -1413.611   -1318.648
+    wisconsin  |  -3845.045   26.90394  -142.92   0.000    -3897.775   -3792.314
+         iowa  |  -4097.378   25.94898  -157.90   0.000    -4148.237   -4046.519
+       kansas  |  -4323.297   26.88096  -160.83   0.000    -4375.983   -4270.611
+    minnesota  |  -3043.701   27.66049  -110.04   0.000    -3097.914   -2989.487
+     missouri  |  -3262.503   24.91526  -130.94   0.000    -3311.336    -3213.67
+     nebraska  |  -4323.601   29.24155  -147.86   0.000    -4380.914   -4266.289
+ north dakota  |  -5238.442   39.06531  -134.09   0.000    -5315.008   -5161.875
+ south dakota  |  -5177.082   36.75562  -140.85   0.000    -5249.122   -5105.042
+      arizona  |  -1447.184   55.73789   -25.96   0.000    -1556.428    -1337.94
+     colorado  |  -2000.839   33.20142   -60.26   0.000    -2065.912   -1935.765
+        idaho  |  -4423.841   41.35641  -106.97   0.000    -4504.898   -4342.784
+      montana  |  -2970.899   39.16399   -75.86   0.000    -3047.659   -2894.139
+       nevada  |  -516.7992   76.09631    -6.79   0.000    -665.9453   -367.6532
+   new mexico  |  -5531.075   43.58968  -126.89   0.000    -5616.509    -5445.64
+         utah  |   -2750.05   43.01533   -63.93   0.000    -2834.359   -2665.742
+      wyoming  |  -3690.796   54.00444   -68.34   0.000    -3796.642   -3584.949
+   california  |  -1125.475   26.71695   -42.13   0.000    -1177.839   -1073.111
+       oregon  |   -2593.98   33.36121   -77.75   0.000    -2659.366   -2528.593
+   washington  |  -1474.435   30.52223   -48.31   0.000    -1534.257   -1414.612
+               |
+         _cons |  -60087.44   422.4501  -142.24   0.000    -60915.43   -59259.45
+--------------------------------------------------------------------------------
+
+. 
+. matrix define tab6col1_beta_can = r(table)[1,2..6]' // this puts the coefficients 
+> from the yrsusa2 fixed effects into a column vector we can use later
+
+. matrix define tab6col1_ster_can = r(table)[2,2..6]' // and the standard errors
+
+. local col1_N_can = e(N) // we need the observation count as well!!
+
+. 
+. 
+. *now let's get the panel folks in and marked, then run the next two columns
+. append using "${route}/intermediate_datasets/canada_links.dta"
+(label YEAR already defined)
+(label STATEICP already defined)
+(label URBAN already defined)
+(label SEX already defined)
+(label RACE already defined)
+(label BPL already defined)
+(label CITIZEN already defined)
+(label YRIMMIG already defined)
+(label YRSUSA2 already defined)
+(label SPEAKENG already defined)
+(label LIT already defined)
+(label OCC1950 already defined)
+(label SEI already defined)
+(label PRESGL already defined)
+(label ERSCOR50 already defined)
+(label EDSCOR50 already defined)
+
+. gen in_panel   = !missing(panel_id) // if it ain't missing they're in the panel
+
+. gen post1890   = yrimmig>1890
+
+. 
+. gen panel_post   = in_panel * post1890
+
+. replace post1890 = 0 if panel_post==1 // they get a negative coefficient on Arrive
+>  1891+ via this interaction, which makes sense in their paper, so we'll do it here
+(35,907 real changes made)
+
+. 
+. *they do some more funky adjustments to the fixed effects values for their tables,
+>  so we'll replicate them here (basically trying to add coefficients together pre-r
+> egression)
+. tab yrsusa2, gen(I_yrs)
+
+   years in |
+ the united |
+    states, |
+intervalled |      Freq.     Percent        Cum.
+------------+-----------------------------------
+        n/a | 22,707,923       97.35       97.35
+  0-5 years |     76,450        0.33       97.68
+ 6-10 years |     69,417        0.30       97.97
+11-15 years |     88,076        0.38       98.35
+16-20 years |    115,838        0.50       98.85
+  21+ years |    268,922        1.15      100.00
+------------+-----------------------------------
+      Total | 23,326,626      100.00
+
+. foreach var of varlist I_yrs* {
+  2.         gen P_`var' = in_panel * `var'          // an interaction term with bei
+> ng in the panel
+  3.         replace `var' = 0 if in_panel==1        // this is the weird one
+  4. }
+(5,822,649 real changes made)
+(8,419 real changes made)
+(10,770 real changes made)
+(14,066 real changes made)
+(18,627 real changes made)
+(48,276 real changes made)
+
+. 
+. *run the column 2 and 3 regression!!
+. reg occscore2010                /// we have to do a gross regression here because 
+> they hate us
+>         I_yrs2 I_yrs3 I_yrs4 I_yrs5 I_yrs6                                        
+>       /// These are the fixed effects on duration for the cross-section, leaving o
+> ut the natives (they're in I_yrs1)
+>         P_I_yrs2 P_I_yrs3 P_I_yrs4 P_I_yrs5 P_I_yrs6 P_I_yrs1   /// these are the 
+> interactions on immigrant duration for the panel folks
+>         post1890 panel_post                                                       
+>                       ///  gotta add these
+>         i.year age age2 age3 age4 i.stateicp, robust
+
+Linear regression                               Number of obs     =   23326626
+                                                F(67, 23326558)   =   33730.67
+                                                Prob > F          =     0.0000
+                                                R-squared         =     0.0760
+                                                Root MSE          =      11319
+
+-----------------------------------------------------------------------------------
+                  |               Robust
+     occscore2010 | Coefficient  std. err.      t    P>|t|     [95% conf. interval]
+------------------+----------------------------------------------------------------
+           I_yrs2 |   636.9353   50.40057    12.64   0.000      538.152    735.7186
+           I_yrs3 |   1243.652   51.98855    23.92   0.000     1141.757    1345.548
+           I_yrs4 |   915.6906   42.52466    21.53   0.000     832.3438    999.0374
+           I_yrs5 |   581.5443   38.19272    15.23   0.000      506.688    656.4007
+           I_yrs6 |   517.3351   26.30272    19.67   0.000     465.7827    568.8875
+         P_I_yrs2 |   766.3627   145.1343     5.28   0.000     481.9047    1050.821
+         P_I_yrs3 |   1545.042   131.2127    11.78   0.000     1287.869    1802.214
+         P_I_yrs4 |   1326.061   101.6959    13.04   0.000     1126.741    1525.381
+         P_I_yrs5 |   1144.505   88.46333    12.94   0.000     971.1204     1317.89
+         P_I_yrs6 |   1423.657   55.40938    25.69   0.000     1315.057    1532.258
+         P_I_yrs1 |  -249.8525    5.47542   -45.63   0.000    -260.5841   -239.1209
+         post1890 |    198.542   35.79733     5.55   0.000     128.3805    268.7035
+       panel_post |   809.2427    87.4495     9.25   0.000     637.8448    980.6405
+                  |
+             year |
+            1910  |   2090.519    7.82676   267.10   0.000     2075.179     2105.86
+            1920  |    2658.07   11.22417   236.82   0.000     2636.072    2680.069
+                  |
+              age |   4717.589   23.46078   201.08   0.000     4671.607    4763.571
+             age2 |  -140.3527    .931482  -150.68   0.000    -142.1783    -138.527
+             age3 |   1.784733   .0155896   114.48   0.000     1.754178    1.815288
+             age4 |   -.008328   .0000938   -88.77   0.000    -.0085118   -.0081441
+                  |
+         stateicp |
+           maine  |  -3547.748   27.08481  -130.99   0.000    -3600.833   -3494.662
+   massachusetts  |   498.1776   22.65417    21.99   0.000     453.7762    542.5789
+   new hampshire  |  -2133.932   31.86563   -66.97   0.000    -2196.387   -2071.476
+    rhode island  |   913.5089   33.44995    27.31   0.000     847.9482    979.0697
+         vermont  |  -4111.244   33.60835  -122.33   0.000    -4177.115   -4045.373
+        delaware  |   1455.322   351.9356     4.14   0.000     765.5409    2145.103
+      new jersey  |   781.3174   23.84678    32.76   0.000     734.5786    828.0563
+        new york  |  -272.5306   21.15711   -12.88   0.000    -313.9978   -231.0635
+    pennsylvania  |  -400.8327   20.95658   -19.13   0.000    -441.9069   -359.7586
+        illinois  |  -2301.271    21.5205  -106.93   0.000    -2343.451   -2259.092
+         indiana  |  -3298.162   21.98907  -149.99   0.000     -3341.26   -3255.064
+        michigan  |  -3077.283   22.43028  -137.19   0.000    -3121.245    -3033.32
+            ohio  |  -1622.027   21.28286   -76.21   0.000    -1663.741   -1580.313
+       wisconsin  |  -4030.325   23.52505  -171.32   0.000    -4076.433   -3984.217
+            iowa  |  -4300.872   22.61113  -190.21   0.000    -4345.189   -4256.555
+          kansas  |  -4587.342    23.4428  -195.68   0.000    -4633.289   -4541.394
+       minnesota  |  -3328.316    24.2961  -136.99   0.000    -3375.936   -3280.697
+        missouri  |  -3553.389   21.89984  -162.26   0.000    -3596.312   -3510.466
+        nebraska  |  -4576.372   25.45343  -179.79   0.000     -4626.26   -4526.484
+    north dakota  |   -5374.32   34.81545  -154.37   0.000    -5442.557   -5306.083
+    south dakota  |  -5342.517   31.91704  -167.39   0.000    -5405.074   -5279.961
+        virginia  |  -1371.227   253.4893    -5.41   0.000    -1868.057    -874.397
+         alabama  |   443.3246   379.4073     1.17   0.243    -300.3002    1186.949
+        arkansas  |  -4184.254    144.707   -28.92   0.000    -4467.875   -3900.634
+         florida  |   291.8604   241.9845     1.21   0.228    -182.4206    766.1413
+         georgia  |   2358.177   447.8224     5.27   0.000     1480.461    3235.893
+       louisiana  |    1337.46   372.0668     3.59   0.000     608.2225    2066.698
+     mississippi  |  -485.3483   497.5554    -0.98   0.329    -1460.539    489.8426
+  north carolina  |   1191.046    546.823     2.18   0.029     119.2924    2262.799
+  south carolina  |   3216.995    887.825     3.62   0.000      1476.89      4957.1
+           texas  |  -644.0036     135.56    -4.75   0.000    -909.6963   -378.3109
+        kentucky  |  -380.4819   165.9127    -2.29   0.022    -705.6648     -55.299
+        maryland  |  -102.2364   223.9844    -0.46   0.648    -541.2378    336.7651
+        oklahoma  |  -3289.362   73.69139   -44.64   0.000    -3433.795    -3144.93
+       tennessee  |   788.9924   272.3845     2.90   0.004     255.1286    1322.856
+   west virginia  |   1523.178   159.8174     9.53   0.000     1209.941    1836.414
+         arizona  |  -1653.388   51.87291   -31.87   0.000    -1755.057   -1551.719
+        colorado  |  -2083.586   29.55992   -70.49   0.000    -2141.523    -2025.65
+           idaho  |    -4701.9   35.94773  -130.80   0.000    -4772.356   -4631.444
+         montana  |  -3099.206   35.40715   -87.53   0.000    -3168.603   -3029.809
+          nevada  |  -653.5755   69.51814    -9.40   0.000    -789.8286   -517.3224
+      new mexico  |  -5674.541   39.63814  -143.16   0.000     -5752.23   -5596.852
+            utah  |   -3109.56   35.49963   -87.59   0.000    -3179.138   -3039.982
+         wyoming  |   -3854.47   49.38237   -78.05   0.000    -3951.258   -3757.683
+      california  |  -1152.704   23.72122   -48.59   0.000    -1199.196   -1106.211
+          oregon  |  -2790.659    29.4183   -94.86   0.000    -2848.317       -2733
+      washington  |  -1561.719   27.26193   -57.29   0.000    -1615.151   -1508.286
+district of co..  |   2050.264   276.6626     7.41   0.000     1508.015    2592.513
+                  |
+            _cons |   -35829.4   210.2678  -170.40   0.000    -36241.51   -35417.28
+-----------------------------------------------------------------------------------
+
+.         
+. matrix define tab6col2_3_beta_can = r(table)[1,1..13]' // this puts the coefficien
+> ts from the yrsusa2 fixed effects into a column vector we can use later
+
+. matrix define tab6col2_3_ster_can = r(table)[2,1..13]' // and the standard errors
+
+. local col2_3_N_can = e(N) // we need the observation count as well!!
+
+. 
+. 
+. *now it's time to put together the table into an Excel file:
+. putexcel set "${route}/output/tables", sheet(table6_can, replace) modify // we're 
+> replacing the table4 sheet but modifying the document as a whole; this avoids dele
+> ting other tables later but still lets us refresh this table on each rerun
+
+. putexcel A1  = "Canadian men"
+file /Users/tmorg46/Desktop/abe2014_replication/our_stuff/output/tables.xlsx saved
+
+.                  
+. putexcel B2  = "PCS Only"               ///  
+>                  B3  = `col1_N_can'     ///
+>                  A4  = matrix(tab6col1_beta_can), rownames nformat(#,###.00)
+file /Users/tmorg46/Desktop/abe2014_replication/our_stuff/output/tables.xlsx saved
+
+.                  
+. putexcel C2  = "St. Errs"               ///
+>                  C4  = matrix(tab6col1_ster_can), nformat(#.00)
+file /Users/tmorg46/Desktop/abe2014_replication/our_stuff/output/tables.xlsx saved
+
+.                  
+. putexcel F2  = "Combo Values"   ///
+>                  F3      = `col2_3_N_can'       ///
+>                  E4      = matrix(tab6col2_3_beta_can), rownames nformat(#,###.00)
+file /Users/tmorg46/Desktop/abe2014_replication/our_stuff/output/tables.xlsx saved
+
+.                  
+. putexcel G4  = matrix(tab6col2_3_ster_can), nformat(#.00)
+file /Users/tmorg46/Desktop/abe2014_replication/our_stuff/output/tables.xlsx saved
+
+. putexcel E14 = "Native-born"
+file /Users/tmorg46/Desktop/abe2014_replication/our_stuff/output/tables.xlsx saved
+
+. 
+. 
+. ********************************
+. * Now let's get the ladies done!
+. use "${route}/intermediate_datasets/women_pcs.dta", clear
+
+. 
+. *we need a numeric bpl version for easy fixed effects:
+. replace bpl = 1 if bpl<100 // now all the american folks have the same bpl, and it
+> 'll be the excluded one in i. specifications
+(16,482,198 real changes made)
+
+. 
+. *do the column 1 regression: just on the pooled cross-section. we don't have birth
+> place fixed effects because it's only canada or not, and that indicator is colline
+> ar with the yrsusa fixed effects
+. reg occscore2010 i.yrsusa2 i.year age age2 age3 age4 i.bpl i.stateicp, robust
+note: 465.bpl omitted because of collinearity.
+
+Linear regression                               Number of obs     =   19571567
+                                                F(57, 19571509)   =    8877.28
+                                                Prob > F          =     0.0000
+                                                R-squared         =     0.0270
+                                                Root MSE          =     7438.5
+
+-----------------------------------------------------------------------------------
+                  |               Robust
+     occscore2010 | Coefficient  std. err.      t    P>|t|     [95% conf. interval]
+------------------+----------------------------------------------------------------
+          yrsusa2 |
+       0-5 years  |  -926.5148   18.36377   -50.45   0.000    -962.5071   -890.5225
+      6-10 years  |   -1591.63   16.66045   -95.53   0.000    -1624.284   -1558.976
+     11-15 years  |  -1689.806   16.03604  -105.38   0.000    -1721.236   -1658.376
+     16-20 years  |  -1413.563   15.41941   -91.67   0.000    -1443.785   -1383.342
+       21+ years  |  -1611.834   14.45204  -111.53   0.000     -1640.16   -1583.509
+                  |
+             year |
+            1910  |    815.254   5.552262   146.83   0.000     804.3718    826.1362
+            1920  |   1446.408   8.013949   180.49   0.000     1430.701    1462.115
+                  |
+              age |    2799.51   34.07013    82.17   0.000     2732.734    2866.286
+             age2 |  -142.2888   1.512392   -94.08   0.000     -145.253   -139.3245
+             age3 |   2.858703   .0286927    99.63   0.000     2.802466    2.914939
+             age4 |   -.020208   .0001971  -102.53   0.000    -.0205942   -.0198217
+                  |
+              bpl |
+         denmark  |   392.6675   25.82189    15.21   0.000     342.0575    443.2775
+         finland  |  -103.2304   28.75214    -3.59   0.000    -159.5835    -46.8772
+          norway  |   670.0858   20.70124    32.37   0.000     629.5121    710.6595
+          sweden  |   433.2834   16.91377    25.62   0.000      400.133    466.4338
+         england  |   1360.413   20.10009    67.68   0.000     1321.017    1399.808
+        scotland  |   1415.548   30.59291    46.27   0.000     1355.587    1475.509
+           wales  |   444.9753   40.73842    10.92   0.000     365.1295    524.8212
+         ireland  |   1009.552   15.81678    63.83   0.000     978.5521    1040.553
+         belgium  |   546.5199   60.60211     9.02   0.000     427.7419    665.2978
+          france  |   1703.444   44.49594    38.28   0.000     1616.233    1790.654
+     switzerland  |    949.945   35.93925    26.43   0.000     879.5054    1020.385
+           italy  |  -472.4039   19.30674   -24.47   0.000    -510.2444   -434.5634
+        portugal  |  -677.4645   52.37657   -12.93   0.000    -780.1207   -574.8083
+         austria  |   65.80351   19.56972     3.36   0.001     27.44756    104.1595
+         germany  |   513.1222   15.09953    33.98   0.000     483.5277    542.7168
+other ussr/rus..  |          0  (omitted)
+                  |
+         stateicp |
+           maine  |  -979.6102   21.67937   -45.19   0.000    -1022.101   -937.1194
+   massachusetts  |    993.055   16.48022    60.26   0.000     960.7544    1025.356
+   new hampshire  |   259.6296   28.08627     9.24   0.000     204.5815    314.6777
+    rhode island  |   1065.483   26.22246    40.63   0.000     1014.088    1116.878
+         vermont  |  -1421.573   25.90878   -54.87   0.000    -1472.354   -1370.793
+      new jersey  |  -975.2145    16.3791   -59.54   0.000    -1007.317    -943.112
+        new york  |  -331.8029   14.69567   -22.58   0.000    -360.6059   -302.9999
+    pennsylvania  |  -1412.057   14.73268   -95.85   0.000    -1440.933   -1383.182
+        illinois  |  -1573.104    14.9674  -105.10   0.000    -1602.439   -1543.768
+         indiana  |  -2487.364    15.4298  -161.21   0.000    -2517.606   -2457.122
+        michigan  |  -1881.414    15.9526  -117.94   0.000    -1912.681   -1850.148
+            ohio  |   -1830.44   15.01346  -121.92   0.000    -1859.866   -1801.014
+       wisconsin  |  -1952.543    16.1157  -121.16   0.000    -1984.129   -1920.957
+            iowa  |  -2057.981   16.04178  -128.29   0.000    -2089.422   -2026.539
+          kansas  |  -2537.383   16.66219  -152.28   0.000     -2570.04   -2504.726
+       minnesota  |  -1675.622   16.71888  -100.22   0.000    -1708.391   -1642.854
+        missouri  |  -2305.239     15.347  -150.21   0.000    -2335.318   -2275.159
+        nebraska  |  -2170.259   17.99297  -120.62   0.000    -2205.524   -2134.993
+    north dakota  |  -2331.778   22.91981  -101.74   0.000      -2376.7   -2286.856
+    south dakota  |  -2288.345   22.38942  -102.21   0.000    -2332.228   -2244.463
+         arizona  |   -2072.57   38.93528   -53.23   0.000    -2148.882   -1996.258
+        colorado  |  -1470.029   20.84034   -70.54   0.000    -1510.875   -1429.182
+           idaho  |  -2588.601   26.08053   -99.25   0.000    -2639.718   -2537.484
+         montana  |  -1859.114   26.18295   -71.00   0.000    -1910.431   -1807.796
+          nevada  |  -1332.571   63.74948   -20.90   0.000    -1457.518   -1207.624
+      new mexico  |  -2709.991   26.13653  -103.69   0.000    -2761.218   -2658.764
+            utah  |   -2470.36   24.80091   -99.61   0.000    -2518.969   -2421.751
+         wyoming  |  -2223.821   38.45264   -57.83   0.000    -2299.187   -2148.455
+      california  |  -874.1703   16.80476   -52.02   0.000    -907.1071   -841.2336
+          oregon  |  -1556.202   22.20983   -70.07   0.000    -1599.733   -1512.672
+      washington  |  -1499.756     20.021   -74.91   0.000    -1538.996   -1460.515
+                  |
+            _cons |  -12360.86   276.2399   -44.75   0.000    -12902.28   -11819.44
+-----------------------------------------------------------------------------------
+
+. 
+. matrix define tab6col1_beta_wom = r(table)[1,2..6]' // this puts the coefficients 
+> from the yrsusa2 fixed effects into a column vector we can use later
+
+. matrix define tab6col1_ster_wom = r(table)[2,2..6]' // and the standard errors
+
+. local col1_N_wom = e(N) // we need the observation count as well!!
+
+. 
+. 
+. *now let's get the panel folks in and marked, then run the next two columns
+. append using "${route}/intermediate_datasets/women_links.dta"
+(label YEAR already defined)
+(label STATEICP already defined)
+(label URBAN already defined)
+(label SEX already defined)
+(label RACE already defined)
+(label BPL already defined)
+(label CITIZEN already defined)
+(label YRIMMIG already defined)
+(label YRSUSA2 already defined)
+(label SPEAKENG already defined)
+(label LIT already defined)
+(label OCC1950 already defined)
+(label SEI already defined)
+(label PRESGL already defined)
+(label ERSCOR50 already defined)
+(label EDSCOR50 already defined)
+
+. replace bpl = 1 if bpl<100 // same as above, just gotta do it again post-append
+(5,578,488 real changes made)
+
+. 
+. gen in_panel   = !missing(panel_id) // if it ain't missing they're in the panel
+
+. gen post1890   = yrimmig>1890
+
+. 
+. gen panel_post   = in_panel * post1890
+
+. replace post1890 = 0 if panel_post==1 // they get a negative coefficient on Arrive
+>  1891+ via this interaction, which makes sense in their paper, so we'll do it here
+(163,287 real changes made)
+
+. 
+. *they do some more funky adjustments to the fixed effects values for their tables,
+>  so we'll replicate them here (basically trying to add coefficients together pre-r
+> egression)
+. tab yrsusa2, gen(I_yrs)
+
+   years in |
+ the united |
+    states, |
+intervalled |      Freq.     Percent        Cum.
+------------+-----------------------------------
+        n/a | 22,072,769       86.01       86.01
+  0-5 years |    332,390        1.30       87.30
+ 6-10 years |    414,948        1.62       88.92
+11-15 years |    509,564        1.99       90.91
+16-20 years |    721,615        2.81       93.72
+  21+ years |  1,612,498        6.28      100.00
+------------+-----------------------------------
+      Total | 25,663,784      100.00
+
+. foreach var of varlist I_yrs* {
+  2.         gen P_`var' = in_panel * `var'          // an interaction term with bei
+> ng in the panel
+  3.         replace `var' = 0 if in_panel==1        // this is the weird one
+  4. }
+(5,579,925 real changes made)
+(31,838 real changes made)
+(53,782 real changes made)
+(67,013 real changes made)
+(100,520 real changes made)
+(259,139 real changes made)
+
+. 
+. *run the column 2 and 3 regression!!
+. reg occscore2010                /// we have to do a gross regression here because 
+> they hate us
+>         I_yrs2 I_yrs3 I_yrs4 I_yrs5 I_yrs6                                        
+>       /// These are the fixed effects on duration for the cross-section, leaving o
+> ut the natives (they're in I_yrs1)
+>         P_I_yrs2 P_I_yrs3 P_I_yrs4 P_I_yrs5 P_I_yrs6 P_I_yrs1   /// these are the 
+> interactions on immigrant duration for the panel folks
+>         post1890 panel_post                                                       
+>                       ///  gotta add these
+>         i.year age age2 age3 age4 i.bpl i.stateicp, robust
+note: 465.bpl omitted because of collinearity.
+
+Linear regression                               Number of obs     =   25663784
+                                                F(82, 25663701)   =   10379.88
+                                                Prob > F          =     0.0000
+                                                R-squared         =     0.0325
+                                                Root MSE          =     7118.1
+
+-----------------------------------------------------------------------------------
+                  |               Robust
+     occscore2010 | Coefficient  std. err.      t    P>|t|     [95% conf. interval]
+------------------+----------------------------------------------------------------
+           I_yrs2 |  -428.8708   19.18497   -22.35   0.000    -466.4726   -391.2689
+           I_yrs3 |  -1140.444   17.53774   -65.03   0.000    -1174.817   -1106.071
+           I_yrs4 |  -1401.312   16.04106   -87.36   0.000    -1432.752   -1369.872
+           I_yrs5 |  -1136.027   15.63511   -72.66   0.000    -1166.671   -1105.383
+           I_yrs6 |   -1457.64   13.83855  -105.33   0.000    -1484.763   -1430.517
+         P_I_yrs2 |  -3162.989   28.67348  -110.31   0.000    -3219.188    -3106.79
+         P_I_yrs3 |  -3310.854   23.49311  -140.93   0.000      -3356.9   -3264.809
+         P_I_yrs4 |  -3071.713    20.8293  -147.47   0.000    -3112.537   -3030.888
+         P_I_yrs5 |  -2684.256   20.68354  -129.78   0.000    -2724.795   -2643.717
+         P_I_yrs6 |  -2553.373   16.23727  -157.25   0.000    -2585.197   -2521.548
+         P_I_yrs1 |  -1294.376   3.203393  -404.06   0.000    -1300.654   -1288.097
+         post1890 |  -330.9587   8.337255   -39.70   0.000    -347.2994   -314.6179
+       panel_post |  -31.05648   15.45642    -2.01   0.045    -61.35051   -.7624463
+                  |
+             year |
+            1910  |   925.8813   4.659056   198.73   0.000     916.7497    935.0129
+            1920  |   1785.268   6.706494   266.20   0.000     1772.123    1798.412
+                  |
+              age |  -164.3158   13.91308   -11.81   0.000    -191.5849   -137.0466
+             age2 |  -5.585633    .562146    -9.94   0.000    -6.687419   -4.483847
+             age3 |   .1776137   .0096841    18.34   0.000     .1586331    .1965942
+             age4 |  -.0012983   .0000606   -21.41   0.000    -.0014171   -.0011795
+                  |
+              bpl |
+         denmark  |   360.2913    22.5741    15.96   0.000     316.0469    404.5358
+         finland  |  -78.10524   26.76066    -2.92   0.004    -130.5552   -25.65531
+          norway  |   619.2566   18.30425    33.83   0.000     583.3809    655.1322
+          sweden  |    376.481   15.30259    24.60   0.000     346.4885    406.4735
+         england  |   1200.358   18.00043    66.68   0.000     1165.078    1235.638
+        scotland  |   1244.219   27.01911    46.05   0.000     1191.263    1297.176
+           wales  |   346.7731   35.59228     9.74   0.000     277.0135    416.5327
+         ireland  |   844.4678   14.68524    57.50   0.000     815.6852    873.2503
+         belgium  |   491.7114   54.67126     8.99   0.000     384.5577    598.8651
+          france  |   1582.966    41.9419    37.74   0.000     1500.761    1665.171
+     switzerland  |   843.3253    31.7406    26.57   0.000     781.1149    905.5357
+           italy  |  -436.3409   18.18635   -23.99   0.000    -471.9855   -400.6963
+        portugal  |  -713.0541   48.72896   -14.63   0.000    -808.5611   -617.5471
+         austria  |   28.60644   18.60251     1.54   0.124      -7.8538    65.06669
+         germany  |   445.0093   13.93307    31.94   0.000      417.701    472.3176
+other ussr/rus..  |          0  (omitted)
+                  |
+         stateicp |
+           maine  |  -826.1605   18.27294   -45.21   0.000    -861.9748   -790.3462
+   massachusetts  |    1002.56   14.46339    69.32   0.000      974.212    1030.907
+   new hampshire  |   270.6822    23.7621    11.39   0.000     224.1093     317.255
+    rhode island  |   1040.872   22.97771    45.30   0.000     995.8361    1085.907
+         vermont  |  -1257.622   21.64281   -58.11   0.000    -1300.042   -1215.203
+        delaware  |  -1788.702   174.5873   -10.25   0.000    -2130.886   -1446.517
+      new jersey  |  -931.4769   14.42296   -64.58   0.000    -959.7454   -903.2084
+        new york  |  -355.5897   12.95625   -27.45   0.000    -380.9835   -330.1959
+    pennsylvania  |  -1334.973   12.92085  -103.32   0.000    -1360.298   -1309.649
+        illinois  |  -1509.413   13.09932  -115.23   0.000    -1535.088   -1483.739
+         indiana  |  -2262.699   13.37944  -169.12   0.000    -2288.922   -2236.475
+        michigan  |  -1746.118   13.83004  -126.26   0.000    -1773.224   -1719.012
+            ohio  |  -1692.562   13.10503  -129.15   0.000    -1718.247   -1666.876
+       wisconsin  |  -1810.277    13.9873  -129.42   0.000    -1837.692   -1782.863
+            iowa  |  -1869.936   13.81758  -135.33   0.000    -1897.018   -1842.854
+          kansas  |  -2293.428   14.34693  -159.85   0.000    -2321.548   -2265.309
+       minnesota  |  -1591.233   14.47672  -109.92   0.000    -1619.607   -1562.859
+        missouri  |  -2160.183   13.36232  -161.66   0.000    -2186.373   -2133.993
+        nebraska  |  -1996.376   15.36321  -129.95   0.000    -2026.488   -1966.265
+    north dakota  |  -2189.029    19.5968  -111.70   0.000    -2227.438    -2150.62
+    south dakota  |  -2115.067   18.79783  -112.52   0.000     -2151.91   -2078.224
+        virginia  |  -1837.392   117.6436   -15.62   0.000     -2067.97   -1606.815
+         alabama  |  -1648.414    169.261    -9.74   0.000     -1980.16   -1316.668
+        arkansas  |  -1892.853   62.49911   -30.29   0.000    -2015.349   -1770.357
+         florida  |  -721.9779   133.6761    -5.40   0.000    -983.9782   -459.9776
+         georgia  |   -1633.26    200.266    -8.16   0.000    -2025.774   -1240.746
+       louisiana  |  -1847.893   189.1338    -9.77   0.000    -2218.589   -1477.198
+     mississippi  |  -1762.843   251.9074    -7.00   0.000    -2256.572   -1269.114
+  north carolina  |  -1396.433   260.6306    -5.36   0.000    -1907.259   -885.6061
+  south carolina  |  -960.6215   505.0188    -1.90   0.057     -1950.44    29.19731
+           texas  |  -1667.129   64.64933   -25.79   0.000     -1793.84   -1540.419
+        kentucky  |  -1661.677   89.20284   -18.63   0.000    -1836.512   -1486.843
+        maryland  |  -1816.369   111.3007   -16.32   0.000    -2034.514   -1598.223
+        oklahoma  |  -1820.063   34.21838   -53.19   0.000    -1887.129   -1752.996
+       tennessee  |  -1834.568   127.0873   -14.44   0.000    -2083.654   -1585.481
+   west virginia  |  -2062.261   74.32134   -27.75   0.000    -2207.928   -1916.594
+         arizona  |  -1963.647   34.30898   -57.23   0.000    -2030.891   -1896.402
+        colorado  |   -1385.62   18.05432   -76.75   0.000    -1421.006   -1350.234
+           idaho  |  -2375.437   21.43095  -110.84   0.000    -2417.441   -2333.433
+         montana  |  -1773.846   22.44389   -79.03   0.000    -1817.835   -1729.857
+          nevada  |  -1243.606   54.31171   -22.90   0.000    -1350.055   -1137.157
+      new mexico  |  -2527.985   23.29747  -108.51   0.000    -2573.647   -2482.323
+            utah  |  -2168.359   19.97407  -108.56   0.000    -2207.508   -2129.211
+         wyoming  |  -2080.888   32.65553   -63.72   0.000    -2144.892   -2016.884
+      california  |  -813.6198   14.74462   -55.18   0.000    -842.5187   -784.7209
+          oregon  |  -1444.813   18.85633   -76.62   0.000    -1481.771   -1407.855
+      washington  |  -1408.109   17.23911   -81.68   0.000    -1441.897   -1374.321
+district of co..  |   1655.237   186.3463     8.88   0.000     1290.005    2020.469
+                  |
+            _cons |   10450.06   124.0092    84.27   0.000     10207.01    10693.12
+-----------------------------------------------------------------------------------
+
+.         
+. matrix define tab6col2_3_beta_wom = r(table)[1,1..13]' // this puts the coefficien
+> ts from the yrsusa2 fixed effects into a column vector we can use later
+
+. matrix define tab6col2_3_ster_wom = r(table)[2,1..13]' // and the standard errors
+
+. local col2_3_N_wom = e(N) // we need the observation count as well!!
+
+. 
+. 
+. *now it's time to put together the table into an Excel file:
+. putexcel set "${route}/output/tables", sheet(table6_wom, replace) modify // we're 
+> replacing the table4 sheet but modifying the document as a whole; this avoids dele
+> ting other tables later but still lets us refresh this table on each rerun
+
+. putexcel A1  = "European women"
+file /Users/tmorg46/Desktop/abe2014_replication/our_stuff/output/tables.xlsx saved
+
+.                  
+. putexcel B2  = "PCS Only"               ///  
+>                  B3  = `col1_N_wom'     ///
+>                  A4  = matrix(tab6col1_beta_wom), rownames nformat(#,###.00)
+file /Users/tmorg46/Desktop/abe2014_replication/our_stuff/output/tables.xlsx saved
+
+.                  
+. putexcel C2  = "St. Errs"               ///
+>                  C4  = matrix(tab6col1_ster_wom), nformat(#.00)
+file /Users/tmorg46/Desktop/abe2014_replication/our_stuff/output/tables.xlsx saved
+
+.                  
+. putexcel F2  = "Combo Values"   ///
+>                  F3      = `col2_3_N_wom'       ///
+>                  E4      = matrix(tab6col2_3_beta_wom), rownames nformat(#,###.00)
+file /Users/tmorg46/Desktop/abe2014_replication/our_stuff/output/tables.xlsx saved
+
+.                  
+. putexcel G4  = matrix(tab6col2_3_ster_wom), nformat(#.00)
+file /Users/tmorg46/Desktop/abe2014_replication/our_stuff/output/tables.xlsx saved
+
+. putexcel E14 = "Native-born"
+file /Users/tmorg46/Desktop/abe2014_replication/our_stuff/output/tables.xlsx saved
+
+. 
+. // and now we're done! we can hand put it into LaTeX from tables.xlsx because then
+>  it will be pretty :)
+. 
+. 
+. 
+. 
+. 
+. 
+. 
+. 
+. 
+. 
+. 
+end of do-file
+
+. 
+. log close // :) yay!
